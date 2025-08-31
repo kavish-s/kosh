@@ -2,12 +2,20 @@
 
 import json
 
-USERS_FILE = 'data/users.json'
+import os, sys
+# Always resolve data path from project root
+PROJECT_ROOT = sys.path[0]
+USERS_FILE = os.path.join(PROJECT_ROOT, 'app', 'data', 'users.json')
 
 def get_user_attributes(user_id):
     with open(USERS_FILE) as f:
         users = json.load(f)
-    return users.get(user_id, [])
+    attrs = users.get(user_id, [])
+    # Flatten attributes if any are comma-separated
+    flat_attrs = []
+    for attr in attrs:
+        flat_attrs.extend([a.strip() for a in attr.split(',') if a.strip()])
+    return flat_attrs
 
 def check_access(user_id, policy):
     user_attrs = get_user_attributes(user_id)

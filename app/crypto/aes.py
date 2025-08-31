@@ -5,9 +5,13 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.exceptions import InvalidTag
 
 # Using separate keys for encryption and authentication is a good practice.
-AES_KEY_PATH = 'data/aes_encryption.key'
-HMAC_KEY_PATH = 'data/aes_hmac.key'
-os.makedirs('data', exist_ok=True)
+
+import sys
+PROJECT_ROOT = sys.path[0]
+DATA_PATH = os.path.join(PROJECT_ROOT, 'app', 'data')
+os.makedirs(DATA_PATH, exist_ok=True)
+AES_KEY_PATH = os.path.join(DATA_PATH, 'aes_encryption.key')
+HMAC_KEY_PATH = os.path.join(DATA_PATH, 'aes_hmac.key')
 
 def load_or_generate_key(path):
     if os.path.exists(path):

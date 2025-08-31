@@ -40,3 +40,4 @@ build/
 
 # Environment variables
 .env
+app/data/policies.json
