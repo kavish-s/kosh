@@ -1,7 +1,7 @@
 from flask import Flask, request, send_file, render_template, redirect, url_for, session, jsonify, flash
 import socket
 from flask_cors import CORS
-from crypto import aes, abe_simulator as abe
+from app.crypto import aes, abe_simulator as abe
 import os, json
 from io import BytesIO
 
