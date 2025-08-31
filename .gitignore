@@ -12,9 +12,11 @@ ENV/
 venv/
 
 
+
 # Secret keys and user attributes
 app/data/*.key
 app/data/*.json
+app/user_keys/*.json
 
 # Encrypted files and private keys
 app/uploads/
