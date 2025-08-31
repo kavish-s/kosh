@@ -1,26 +1,22 @@
 from flask import Flask, request, send_file, render_template, redirect, url_for, session, jsonify, flash
+"""
+Admin User and Policy Management Routes (moved below app initialization)
+"""
 import socket
 from flask_cors import CORS
-from .crypto import aes, abe_simulator as abe
+from crypto import aes, abe_simulator as abe
 import os, json
 from io import BytesIO
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TEMPLATES_DIR = os.path.join(BASE_DIR, 'templates')
-STATIC_DIR = os.path.join(BASE_DIR, 'static')
-UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads')
-DATA_DIR = os.path.join(BASE_DIR, 'data')
-USER_KEYS_DIR = os.path.join(BASE_DIR, 'user_keys')
-
-app = Flask(__name__, template_folder=TEMPLATES_DIR, static_folder=STATIC_DIR)
+app = Flask(__name__)
 app.secret_key = 'kosh-secret-key'
 CORS(app)
+UPLOAD_FOLDER = 'uploads'
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(DATA_DIR, exist_ok=True)
-os.makedirs(USER_KEYS_DIR, exist_ok=True)
+os.makedirs('data', exist_ok=True)
 
-USERS_FILE = os.path.join(DATA_DIR, 'users.json')
-POLICIES_FILE = os.path.join(DATA_DIR, 'policies.json')
+USERS_FILE = 'data/users.json'
+POLICIES_FILE = 'data/policies.json'
 
 # Initial dummy data if not exists
 if not os.path.exists(USERS_FILE):
@@ -71,14 +67,7 @@ def dashboard():
         else:
             access_policy = policy
             sender = None
-        # Always convert access_policy to a list of attributes
-        if isinstance(access_policy, str):
-            required_attrs = [a.strip() for a in access_policy.split(',') if a.strip()]
-        elif isinstance(access_policy, list):
-            required_attrs = access_policy
-        else:
-            required_attrs = []
-        if abe.check_access(session['user_id'], required_attrs):
+        if abe.check_access(session['user_id'], access_policy):
             user_files.append({'filename': fname, 'sender': sender})
 
     # Get local IP address
@@ -126,17 +115,8 @@ def download(filename):
         return redirect(url_for('home'))
     with open(POLICIES_FILE) as f:
         policies = json.load(f)
-    policy_obj = policies.get(filename)
-    if not policy_obj:
-        return "Access Denied", 403
-    access_policy = policy_obj.get('policy') if isinstance(policy_obj, dict) else policy_obj
-    if isinstance(access_policy, str):
-        required_attrs = [a.strip() for a in access_policy.split(',') if a.strip()]
-    elif isinstance(access_policy, list):
-        required_attrs = access_policy
-    else:
-        required_attrs = []
-    if not abe.check_access(session['user_id'], required_attrs):
+    policy = policies.get(filename)
+    if not policy or not abe.check_access(session['user_id'], policy):
         return "Access Denied", 403
 
     encrypted_path = os.path.join(UPLOAD_FOLDER, filename)

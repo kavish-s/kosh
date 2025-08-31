@@ -1,5 +1,3 @@
-# Also ignore uploads folder at root
-uploads/
 # Python cache
 __pycache__/
 *.py[cod]
@@ -11,17 +9,16 @@ env/
 ENV/
 venv/
 
-
-
 # Secret keys and user attributes
-app/data/*.key
-app/data/*.json
-app/user_keys/*.json
+data/aes_encryption.key
+data/aes_hmac.key
+data/policies.json
+
 
 # Encrypted files and private keys
-app/uploads/
-app/user_keys/*_privkey.json
-app/user_keys/master_key.json
+uploads/
+user_keys/*_privkey.json
+user_keys/master_key.json
 
 # VSCode and OS-specific files
 .vscode/
@@ -42,4 +39,3 @@ build/
 
 # Environment variables
 .env
-app/data/policies.json

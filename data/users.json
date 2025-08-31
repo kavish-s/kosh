@@ -1,0 +1,18 @@
+{
+    "admin": ["admin"],
+    "kavish": [
+        "student",
+        "year4",
+        "batch1"
+    ],
+    "atharva": [
+        "student",
+        "year4",
+        "batch1"
+    ],
+    "neel": [
+        "student",
+        "year4",
+        "batch2"
+    ]
+}
