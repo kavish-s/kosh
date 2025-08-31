@@ -12,31 +12,36 @@
 - 📁 No cloud dependency – works entirely on LAN
 - 📊 File policies now support metadata (policy, key, uploader, etc.)
 
+
 ## 📁 Project Structure
 
 ```
 [project_root]/
-├── app.py
-├── crypto/
-│   ├── aes.py               # AES encryption logic
-│   └── abe_simulator.py     # JSON-based ABE simulation
-├── static/
-│   └── style.css            # Optional CSS
-├── templates/
-│   ├── index.html           # Login page
-│   ├── dashboard.html       # Upload/download page
-│   └── admin.html           # Admin dashboard (manage users/policies)
-│   └── admin_add_user.html  # Add user form
-│   └── admin_edit_user.html # Edit user form
-│   └── admin_add_policy.html # Add policy form
-│   └── admin_edit_policy.html # Edit policy form
-├── uploads/                 # Stores encrypted files
-├── data/
-│   ├── users.json           # Maps users to attributes
-│   └── policies.json        # Maps files to access policies (with metadata)
-├── requirements.txt         # Python dependencies
+├── app/
+│   ├── app.py                  # Main Flask app
+│   ├── __init__.py             # Makes app a package
+│   ├── crypto/
+│   │   ├── aes.py              # AES encryption logic
+│   │   └── abe_simulator.py    # JSON-based ABE simulation
+│   ├── static/
+│   │   └── ...                 # Static assets (icons, manifest, etc.)
+│   ├── templates/
+│   │   ├── index.html          # Login page
+│   │   ├── dashboard.html      # Upload/download page
+│   │   ├── admin.html          # Admin dashboard
+│   │   ├── admin_add_user.html # Add user form
+│   │   ├── admin_edit_user.html # Edit user form
+│   │   ├── admin_add_policy.html # Add policy form
+│   │   ├── admin_edit_policy.html # Edit policy form
+│   ├── uploads/                # Stores encrypted files
+│   ├── data/
+│   │   ├── users.json          # Maps users to attributes
+│   │   └── policies.json       # Maps files to access policies (with metadata)
+│   ├── user_keys/              # Stores user key files
+├── requirements.txt            # Python dependencies
 └── README.md
 ```
+
 
 ## 🚀 Getting Started
 
@@ -49,16 +54,16 @@ cd kosh
 ### 2. Set Up Virtual Environment
 ```bash
 python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+.venv\Scripts\activate  # On Windows (use 'source .venv/bin/activate' on Linux/Mac)
 pip install -r requirements.txt
 ```
 
-### 3. Run the App
+### 3. Run the App (from the project root)
 ```bash
-python app.py
+python -m app.app
 ```
 
-Visit `http://localhost:5000` or the server IP from another device on the same LAN.
+Visit `http://localhost:7130` or the server IP from another device on the same LAN.
 
 
 ### 4. Admin Dashboard & User Management
