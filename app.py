@@ -57,7 +57,18 @@ def dashboard():
     with open(POLICIES_FILE) as f:
         policies = json.load(f)
 
-    user_files = [fname for fname, policy in policies.items() if abe.check_access(session['user_id'], policy)]
+    # Support both old and new policy formats
+    user_files = []
+    for fname, policy in policies.items():
+        # If policy is dict, new format; else, old format
+        if isinstance(policy, dict):
+            access_policy = policy.get('policy')
+            sender = policy.get('sender')
+        else:
+            access_policy = policy
+            sender = None
+        if abe.check_access(session['user_id'], access_policy):
+            user_files.append({'filename': fname, 'sender': sender})
 
     # Get local IP address
     try:
@@ -85,13 +96,14 @@ def upload():
 
     filename = file.filename + '.enc'
     filepath = os.path.join(UPLOAD_FOLDER, filename)
-    
+
     with open(filepath, 'wb') as f_out:
         aes.encrypt(file.stream, f_out)
 
     with open(POLICIES_FILE) as f:
         policies = json.load(f)
-    policies[filename] = policy
+    # Store sender info
+    policies[filename] = {'policy': policy, 'sender': session['user_id']}
     with open(POLICIES_FILE, 'w') as f:
         json.dump(policies, f)
 
