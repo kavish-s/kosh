@@ -96,7 +96,7 @@ def dashboard():
 def upload():
     if 'user_id' not in session:
         return redirect(url_for('home'))
-    file = request.files['file']
+    files = request.files.getlist('file')
     policy = request.form.get('policy')
 
     # Defensive conversion
@@ -105,20 +105,22 @@ def upload():
     elif isinstance(policy, list):
         policy = ' AND '.join(policy)
 
-    filename = file.filename + '.enc'
-    filepath = os.path.join(UPLOAD_FOLDER, filename)
-
-    with open(filepath, 'wb') as f_out:
-        aes.encrypt(file.stream, f_out)
-
+    uploaded_files = []
     with open(POLICIES_FILE) as f:
         policies = json.load(f)
-    # Store sender info
-    policies[filename] = {'policy': policy, 'sender': session['user_id']}
+
+    for file in files:
+        filename = file.filename + '.enc'
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        with open(filepath, 'wb') as f_out:
+            aes.encrypt(file.stream, f_out)
+        policies[filename] = {'policy': policy, 'sender': session['user_id']}
+        uploaded_files.append(filename)
+
     with open(POLICIES_FILE, 'w') as f:
         json.dump(policies, f)
 
-    return jsonify(success=True, filename=filename)
+    return jsonify(success=True, filenames=uploaded_files)
 
 @app.route('/download/<filename>')
 def download(filename):
