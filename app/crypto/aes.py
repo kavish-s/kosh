@@ -6,9 +6,11 @@ from cryptography.exceptions import InvalidTag
 
 # Using separate keys for encryption and authentication is a good practice.
 
-import sys
-PROJECT_ROOT = sys.path[0]
-DATA_PATH = os.path.join(PROJECT_ROOT, 'app', 'data')
+# Get the project root directory (two levels up from this file)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # crypto directory
+APP_DIR = os.path.dirname(BASE_DIR)  # app directory  
+PROJECT_ROOT = os.path.dirname(APP_DIR)  # project root
+DATA_PATH = os.path.join(PROJECT_ROOT, 'data')
 os.makedirs(DATA_PATH, exist_ok=True)
 AES_KEY_PATH = os.path.join(DATA_PATH, 'aes_encryption.key')
 HMAC_KEY_PATH = os.path.join(DATA_PATH, 'aes_hmac.key')

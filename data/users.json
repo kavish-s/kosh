@@ -1,0 +1,48 @@
+{
+  "neel": {
+    "attributes": [
+      "year4",
+      "batch2",
+      "student"
+    ],
+    "password": "pass"
+  },
+  "atharva": {
+    "attributes": [
+      "year4",
+      "batch1",
+      "student"
+    ],
+    "password": "pass"
+  },
+  "kavish": {
+    "attributes": [
+      "year4",
+      "batch1",
+      "student"
+    ],
+    "password": "pass"
+  },
+  "admin": {
+    "attributes": [
+      "admin"
+    ],
+    "password": "pass"
+  },
+  "das": {
+    "attributes": [
+      "student",
+      "year4",
+      "batch1"
+    ],
+    "password": "pass"
+  },
+  "kale": {
+    "attributes": [
+      "student",
+      "year4",
+      "batch2"
+    ],
+    "password": "pass"
+  }
+}

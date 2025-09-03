@@ -84,7 +84,7 @@ Visit `http://localhost:7130` or the server IP from another device on the same L
 - `data/policies.json` now stores policies as objects:
 ```json
 {
-  "file1.pdf.enc": {"policy": "student,batch1", "key": "...", "uploaded_by": "admin"}
+  "file1.pdf.enc": {"policy": "student,batch1", "uploaded_by": "admin"}
 }
 ```
 

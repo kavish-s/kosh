@@ -19,6 +19,9 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
     
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -86,12 +89,19 @@
             background-color: rgba(30, 144, 255, 0.02);
         }
         
+        .upload-zone.dragover {
+            border-color: #1e90ff;
+            background-color: rgba(30, 144, 255, 0.05);
+            transform: scale(1.02);
+        }
+        
         .file-item {
-            transition: none;
+            transition: all 0.2s ease;
         }
         
         .file-item:hover {
             background-color: #252525;
+            transform: translateY(-1px);
         }
         
         input:focus, textarea:focus {
@@ -102,20 +112,112 @@
         
         .btn-primary {
             background: #1e90ff;
-            transition: none;
+            transition: all 0.2s ease;
         }
         
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             background: #0066cc;
+            transform: translateY(-1px);
+        }
+        
+        .btn-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
         }
         
         .btn-secondary {
             background: rgba(255, 255, 255, 0.05);
-            transition: none;
+            transition: all 0.2s ease;
         }
         
         .btn-secondary:hover {
             background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-1px);
+        }
+        
+        .attr-btn {
+            transition: all 0.2s ease;
+        }
+        
+        .attr-btn:hover {
+            transform: translateY(-1px);
+        }
+        
+        .progress-bar-animate {
+            transition: width 0.3s ease;
+        }
+        
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            min-width: 300px;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            opacity: 0;
+            transform: translateY(100%);
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+        }
+        
+        .notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .notification.success {
+            background: #10b981;
+            border: 1px solid #059669;
+            color: white;
+        }
+        
+        .notification.error {
+            background: #ef4444;
+            border: 1px solid #dc2626;
+            color: white;
+        }
+        
+        /* Loading animation */
+        .loading-spinner {
+            border: 2px solid #2a2a2a;
+            border-top: 2px solid #1e90ff;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Responsive improvements */
+        @media (max-width: 768px) {
+            .grid-cols-1.lg\\:grid-cols-2 {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+            
+            .max-w-7xl {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+            
+            .notification {
+                left: 10px;
+                right: 10px;
+                bottom: 10px;
+                min-width: auto;
+            }
+            
+            .flex.items-center.space-x-4 {
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
         }
     </style>
 </head>
@@ -134,16 +236,16 @@
                     <span class="text-sm text-notion-text-secondary">{{ user_id }}</span>
                     {% if user_id == 'admin' %}
                     <a href="/admin" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium text-notion-accent hover:text-white flex items-center space-x-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                        </svg>
+                        <i data-lucide="plus" class="w-4 h-4"></i>
                         <span>Admin Dashboard</span>
                     </a>
                     {% endif %}
+                    <button id="change-password-btn" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium text-notion-text hover:text-white flex items-center space-x-2" type="button">
+                        <i data-lucide="lock" class="w-4 h-4"></i>
+                        <span>Change Password</span>
+                    </button>
                     <a href="/logout" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium text-notion-text hover:text-white flex items-center space-x-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                        </svg>
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
                         <span>Sign out</span>
                     </a>
                 </div>
@@ -158,9 +260,7 @@
             <h2 class="text-3xl font-bold text-notion-text mb-2 font-title">Good to see you back</h2>
             <p class="text-notion-text-secondary text-lg font-content">Manage your encrypted files securely with attribute-based encryption.</p>
             <div class="mt-4 p-4 bg-notion-card border border-notion-border rounded-lg flex items-center space-x-3">
-                <svg class="w-6 h-6 text-notion-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2M12 12v6m0 0l-3-3m3 3l3-3M12 6v6"/>
-                </svg>
+                <i data-lucide="download" class="w-6 h-6 text-notion-accent"></i>
                 <span class="text-notion-text-secondary text-sm">Share files on: <span class="text-notion-accent font-semibold">http://{{ server_ip }}:7130</span></span>
             </div>
         </div>
@@ -174,9 +274,7 @@
                         <div class="flex items-center justify-between">
                             <div class="flex items-center">
                                 <div class="w-10 h-10 bg-notion-accent/10 rounded-lg flex items-center justify-center mr-4">
-                                    <svg class="w-5 h-5 text-notion-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 12l3-3m0 0l3 3m-3-3v12"/>
-                                    </svg>
+                                    <i data-lucide="upload" class="w-5 h-5 text-notion-accent"></i>
                                 </div>
                                 <div>
                                     <h3 class="text-xl font-semibold text-notion-text font-title">Upload a file</h3>
@@ -187,19 +285,26 @@
                     </div>
 
                     <div class="p-6 flex-1">
-                        <form id="upload-form" class="space-y-6">
-                        <!-- File Upload Area -->
-                        <div class="upload-zone rounded-xl p-8 text-center" id="upload-zone">
-                            <input type="file" name="file" required id="file-input" class="hidden" multiple>
-                            <label for="file-input" class="cursor-pointer block">
-                                <div class="mb-4">
-                                    <svg class="w-12 h-12 text-notion-text-secondary mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 12l3-3m0 0l3 3m-3-3v12"/>
-                                    </svg>
-                                </div>
-                                <div class="text-notion-text mb-2 font-medium">Click to upload or drag and drop</div>
-                            </label>
-                        </div>
+                        <form id="upload-form" class="space-y-6" action="/upload" method="POST" enctype="multipart/form-data" novalidate>
+                            {% if csrf_token %}
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            {% endif %}
+                            
+                            <!-- File Upload Area -->
+                            <div class="upload-zone rounded-xl p-8 text-center" id="upload-zone">
+                                <input type="file" name="file" id="file-input" class="hidden" multiple aria-hidden="true">
+
+                                <label for="file-input" id="file-label" class="cursor-pointer block" role="button" aria-haspopup="listbox">
+                                    <div id="file-placeholder" class="mb-4">
+                                        <i data-lucide="upload" class="w-12 h-12 text-notion-text-secondary mx-auto"></i>
+                                    </div>
+                                    <div class="text-notion-text mb-2 font-medium">Click to upload or drag and drop</div>
+                                    <div class="text-notion-text-secondary text-sm">You can select multiple files (max depends on server configuration)</div>
+                                </label>
+
+                                <!-- Accessible file list (populated by JS) -->
+                                <div id="file-list" class="mt-4 text-left" aria-live="polite"></div>
+                            </div>
 
                         <!-- Policy Input -->
                         <div>
@@ -210,29 +315,32 @@
                                 id="policy"
                                 required 
                                 placeholder="e.g., student,year3,batch1"
-                                class="w-full px-4 py-3 bg-notion-input border border-notion-border rounded-lg text-notion-text placeholder-notion-text-secondary focus:outline-none focus:border-notion-accent transition-colors"
+                                class="w-full px-4 py-3 bg-notion-input border border-notion-border rounded-lg text-notion-text placeholder-notion-text-secondary focus:outline-none focus:border-notion-accent transition-colors mb-2"
                             >
-                            <p class="text-xs text-notion-text-secondary mt-2">Type comma-separated attributes (e.g., student,year3,batch1)</p>
+                            <div id="attr-btn-group" class="flex flex-wrap gap-2 mb-2">
+                                {% for attr in all_attributes %}
+                                <button type="button" class="attr-btn px-2 py-1 text-xs rounded-full bg-notion-card text-notion-text-secondary" data-attr="{{ attr }}" aria-pressed="false">{{ attr }}</button>
+                                {% endfor %}
+                            </div>
+                            <p class="text-xs text-notion-text-secondary mt-2">Select attributes below or type manually (comma-separated)</p>
                         </div>
 
                         <!-- Progress Bar -->
-                        <div id="progress-container" class="w-full pt-2" style="display:none;">
+                        <div id="progress-container" class="w-full pt-2" style="display:none;" role="status" aria-live="polite">
                             <div class="w-full bg-notion-border rounded-lg h-3 mb-2">
-                                <div id="progress-bar" class="bg-notion-accent h-3 rounded-lg transition-all duration-200" style="width:0%"></div>
+                                <div id="progress-bar" class="bg-notion-accent h-3 rounded-lg transition-all duration-200" style="width:0%" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div>
                             </div>
                             <div class="flex justify-between items-center text-xs text-notion-text-secondary">
                                 <span id="progress-percent">0%</span>
                                 <span id="progress-time">Estimating...</span>
-                                <button type="button" id="cancel-upload" class="ml-4 btn-secondary px-2 py-1 rounded text-xs font-medium">Cancel</button>
+                                <button type="button" id="cancel-upload" class="ml-4 btn-secondary px-2 py-1 rounded text-xs font-medium" aria-disabled="false">Cancel</button>
                             </div>
                         </div>
 
                         <!-- Submit Button -->
                         <div class="flex justify-end pt-4">
-                            <button type="submit" id="upload-btn" class="btn-primary px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center space-x-2">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                                </svg>
+                            <button type="submit" id="upload-btn" class="btn-primary px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center space-x-2" disabled aria-disabled="true">
+                                <i data-lucide="upload" class="w-4 h-4"></i>
                                 <span>Upload file</span>
                             </button>
                         </div>
@@ -248,10 +356,7 @@
                         <div class="flex items-center justify-between">
                             <div class="flex items-center">
                                 <div class="w-10 h-10 bg-notion-accent/10 rounded-lg flex items-center justify-center mr-4">
-                                    <svg class="w-5 h-5 text-notion-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"/>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v2H8V5z"/>
-                                    </svg>
+                                    <i data-lucide="folder" class="w-5 h-5 text-notion-accent"></i>
                                 </div>
                                 <div>
                                     <h3 class="text-xl font-semibold text-notion-text font-title">Your Files</h3>
@@ -269,24 +374,36 @@
                                         <div class="flex items-center justify-between">
                                             <div class="flex items-center space-x-3">
                                                 <div class="w-8 h-8 bg-notion-accent/10 rounded-lg flex items-center justify-center">
-                                                    <svg class="w-4 h-4 text-notion-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                                    </svg>
+                                                    <i data-lucide="file-text" class="w-4 h-4 text-notion-accent"></i>
                                                 </div>
                                                 <div>
                                                     <p class="font-medium text-notion-text">{{ file.filename }}</p>
                                                     <p class="text-xs text-notion-text-secondary">Encrypted • Ready for download</p>
                                                     {% if file.sender %}
-                                                        <p class="text-xs text-notion-text-secondary">Shared By: {{ file.sender }}</p>
+                                                        <p class="text-xs text-notion-text-secondary">
+                                                            {% if file.is_owner %}
+                                                                <span class="text-green-400">Uploaded by you</span>
+                                                            {% else %}
+                                                                Uploaded by: {{ file.sender }}
+                                                            {% endif %}
+                                                        </p>
+                                                    {% else %}
+                                                        <p class="text-xs text-notion-text-secondary text-orange-400">Uploader unknown</p>
                                                     {% endif %}
                                                 </div>
                                             </div>
-                                            <a href="/download/{{ file.filename }}" class="btn-primary px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center space-x-2">
-                                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                                </svg>
-                                                <span>Download</span>
-                                            </a>
+                                            <div class="flex items-center space-x-2">
+                                                <a href="/download/{{ file.filename }}" class="btn-primary px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center space-x-2">
+                                                    <i data-lucide="download" class="w-4 h-4"></i>
+                                                    <span>Download</span>
+                                                </a>
+                                                {% if file.is_owner %}
+                                                    <button onclick="deleteFile('{{ file.filename }}')" class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center space-x-2 transition-colors">
+                                                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                                        <span>Delete</span>
+                                                    </button>
+                                                {% endif %}
+                                            </div>
                                         </div>
                                     </div>
                                 {% endfor %}
@@ -294,16 +411,12 @@
                         {% else %}
                             <div class="text-center py-16">
                                 <div class="w-16 h-16 bg-notion-border rounded-full flex items-center justify-center mx-auto mb-4">
-                                    <svg class="w-8 h-8 text-notion-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                                    </svg>
+                                    <i data-lucide="file-plus" class="w-8 h-8 text-notion-text-secondary"></i>
                                 </div>
                                 <h4 class="text-lg font-medium text-notion-text mb-2 font-title">No files yet</h4>
                                 <p class="text-notion-text-secondary text-sm mb-6 font-content">Upload your first file to get started with secure encryption</p>
                                 <button onclick="document.getElementById('file-input').click()" class="btn-primary px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center space-x-2 mx-auto">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
-                                    </svg>
+                                    <i data-lucide="upload" class="w-4 h-4"></i>
                                     <span>Upload your first file</span>
                                 </button>
                             </div>
@@ -314,140 +427,681 @@
         </div>
     </main>
 
-    <script>
-        // Multi-file input feedback and drag-and-drop support
-        const fileInput = document.getElementById('file-input');
-        const uploadZone = document.getElementById('upload-zone');
-        fileInput.addEventListener('change', function(e) {
-            showSelectedFiles(e.target.files);
-        });
+    <!-- Change Password Modal -->
+    <div id="change-password-modal" class="fixed inset-0 z-60 hidden items-center justify-center bg-black bg-opacity-50" aria-hidden="true" role="dialog" aria-modal="true">
+        <div class="bg-notion-card border border-notion-border rounded-xl w-full max-w-md p-6 m-4">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold text-notion-text font-title">Change Password</h3>
+                <button id="close-change-password" class="text-notion-text-secondary hover:text-notion-text" aria-label="Close">
+                    <i data-lucide="x" class="w-4 h-4"></i>
+                </button>
+            </div>
+            <form id="change-password-form" action="/change_password" method="POST" class="space-y-4">
+                {% if csrf_token %}
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% endif %}
+                <div>
+                    <label for="modal_new_password" class="block text-sm font-medium text-notion-text mb-2">New Password</label>
+                    <div class="relative">
+                        <input type="password" name="new_password" id="modal_new_password" required class="w-full px-4 py-3 bg-notion-input border border-notion-border rounded-xl text-notion-text placeholder-notion-text-secondary focus:outline-none focus:border-notion-accent transition-colors text-lg" placeholder="Enter new password" aria-describedby="password-help">
+                        <button type="button" id="toggle-password-visibility" class="absolute right-2 top-1/2 -translate-y-1/2 text-notion-text-secondary hover:text-notion-text" aria-label="Show password">
+                            <i data-lucide="eye" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                    <p id="password-help" class="text-xs text-notion-text-secondary mt-2">You can view the password using the eye button.</p>
+                </div>
 
-        function showSelectedFiles(files) {
-            if (files.length > 0) {
-                let labelHtml = '';
-                for (let j = 0; j < files.length; j++) {
-                    const file = files[j];
-                    // Format file size
-                    let size = file.size;
-                    let units = ['B', 'KB', 'MB', 'GB', 'TB'];
-                    let i = 0;
-                    while (size >= 1024 && i < units.length - 1) {
-                        size /= 1024;
-                        i++;
-                    }
-                    const fileSizeStr = `Size: ${size.toFixed(2)} ${units[i]}`;
-                    // Truncate filename if too long
-                    let displayName = file.name;
-                    const maxLen = 40;
-                    if (displayName.length > maxLen) {
-                        displayName = displayName.substring(0, 18) + '...' + displayName.substring(displayName.length - 18);
-                    }
-                    labelHtml += `
-                        <div class="mb-2">
-                            <svg class="w-6 h-6 text-notion-accent inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                            </svg>
-                            <span class="text-notion-accent font-medium filename" title="${file.name}" style="max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block;">
-                                ${displayName}
-                            </span>
-                            <span class="text-notion-text-secondary text-xs ml-2">${fileSizeStr}</span>
-                        </div>`;
-                }
-                labelHtml += `<div class="text-notion-text-secondary text-sm">${files.length} file(s) selected • Ready to upload</div>`;
-                const label = document.querySelector('label[for="file-input"]');
-                label.innerHTML = labelHtml;
-            }
+                <div>
+                    <label for="modal_confirm_password" class="block text-sm font-medium text-notion-text mb-2">Confirm Password</label>
+                    <input type="password" name="confirm_password" id="modal_confirm_password" required class="w-full px-4 py-3 bg-notion-input border border-notion-border rounded-xl text-notion-text placeholder-notion-text-secondary focus:outline-none focus:border-notion-accent transition-colors text-lg" placeholder="Re-type new password">
+                </div>
+
+                <div id="password-error" class="text-sm text-red-400" role="alert" aria-live="polite" style="display:none;">Passwords do not match.</div>
+
+                <div class="flex justify-end">
+                    <button type="submit" id="change-password-submit" class="btn-primary px-4 py-2 rounded-lg text-white text-sm font-medium" disabled aria-disabled="true">Change Password</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Utility functions for better UX
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            setTimeout(() => notification.classList.add('show'), 100);
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => document.body.removeChild(notification), 300);
+            }, 3000);
         }
 
-        // Drag and drop events
-        uploadZone.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            uploadZone.classList.add('ring-2', 'ring-notion-accent');
-        });
-        uploadZone.addEventListener('dragleave', function(e) {
-            e.preventDefault();
-            uploadZone.classList.remove('ring-2', 'ring-notion-accent');
-        });
-        uploadZone.addEventListener('drop', function(e) {
-            e.preventDefault();
-            uploadZone.classList.remove('ring-2', 'ring-notion-accent');
-            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                fileInput.files = e.dataTransfer.files;
-                showSelectedFiles(e.dataTransfer.files);
+        // Function to delete a file
+        function deleteFile(filename) {
+            if (!confirm(`Are you sure you want to delete "${filename.replace('.enc', '')}"? This action cannot be undone.`)) {
+                return;
             }
-        });
 
-        // AJAX upload with progress bar, estimated time, and cancel button
-        let currentXhr = null;
-        document.getElementById('upload-form').addEventListener('submit', function(e) {
-            e.preventDefault();
+            fetch('/delete_file', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ filename: filename })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`File "${filename.replace('.enc', '')}" deleted successfully`, 'success');
+                    // Reload the page to refresh the file list
+                    setTimeout(() => window.location.reload(), 1000);
+                } else {
+                    showNotification(`Error deleting file: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showNotification('Error deleting file. Please try again.', 'error');
+            });
+        }
+
+        // Improved upload UI with better UX
+        window.allAttributes = {{ all_attributes|tojson|safe }};
+        (function() {
             const fileInput = document.getElementById('file-input');
+            const uploadZone = document.getElementById('upload-zone');
+            const fileList = document.getElementById('file-list');
+            const uploadBtn = document.getElementById('upload-btn');
             const policyInput = document.getElementById('policy');
-            const files = fileInput.files;
-            if (!files.length) return;
-            const policy = policyInput.value;
-            const formData = new FormData();
-            for (let i = 0; i < files.length; i++) {
-                formData.append('file', files[i]);
-            }
-            formData.append('policy', policy);
-
-            const xhr = new XMLHttpRequest();
-            currentXhr = xhr;
-            xhr.open('POST', '/upload', true);
-
             const progressContainer = document.getElementById('progress-container');
             const progressBar = document.getElementById('progress-bar');
             const progressPercent = document.getElementById('progress-percent');
             const progressTime = document.getElementById('progress-time');
-            progressContainer.style.display = 'block';
-            progressBar.style.width = '0%';
-            progressPercent.textContent = '0%';
-            progressTime.textContent = 'Estimating...';
+            const cancelBtn = document.getElementById('cancel-upload');
+            const uploadForm = document.getElementById('upload-form');
 
-            let startTime = null;
-            xhr.upload.addEventListener('progress', function(evt) {
-                if (!startTime) startTime = Date.now();
-                if (evt.lengthComputable) {
-                    const percent = Math.round((evt.loaded / evt.total) * 100);
-                    progressBar.style.width = percent + '%';
-                    progressPercent.textContent = percent + '%';
-                    const elapsed = (Date.now() - startTime) / 1000;
-                    const speed = evt.loaded / elapsed;
-                    const remaining = evt.total - evt.loaded;
-                    const eta = speed > 0 ? (remaining / speed) : 0;
-                    progressTime.textContent = eta > 1 ? `~${Math.ceil(eta)}s left` : 'Almost done';
+            let currentXhr = null;
+
+            function formatSize(bytes) {
+                if (bytes === 0) return '0 B';
+                const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+                let i = 0;
+                let size = bytes;
+                while (size >= 1024 && i < units.length - 1) {
+                    size /= 1024;
+                    i++;
+                }
+                return `${size.toFixed(2)} ${units[i]}`;
+            }
+
+            function validateFiles(files) {
+                const maxFileSize = 100 * 1024 * 1024; // 100MB per file
+                const maxTotalSize = 500 * 1024 * 1024; // 500MB total
+                let totalSize = 0;
+                const invalidFiles = [];
+
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    totalSize += file.size;
+                    
+                    if (file.size > maxFileSize) {
+                        invalidFiles.push(`${file.name} (${formatSize(file.size)}) exceeds 100MB limit`);
+                    }
+                }
+
+                if (totalSize > maxTotalSize) {
+                    invalidFiles.push(`Total size (${formatSize(totalSize)}) exceeds 500MB limit`);
+                }
+
+                return {
+                    valid: invalidFiles.length === 0,
+                    errors: invalidFiles,
+                    totalSize: totalSize
+                };
+            }
+
+            function renderFileList(files) {
+                fileList.innerHTML = '';
+                if (!files || files.length === 0) {
+                    fileList.innerHTML = '<div class="text-notion-text-secondary text-sm">No files selected</div>';
+                    return;
+                }
+
+                const validation = validateFiles(files);
+                
+                if (!validation.valid) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.className = 'text-red-400 text-sm mb-2';
+                    errorDiv.innerHTML = `<strong>File validation errors:</strong><br>${validation.errors.join('<br>')}`;
+                    fileList.appendChild(errorDiv);
+                }
+
+                const frag = document.createDocumentFragment();
+                for (let i = 0; i < files.length; i++) {
+                    const f = files[i];
+                    const item = document.createElement('div');
+                    item.className = 'mb-2 flex items-center justify-between p-2 rounded border border-notion-border bg-notion-bg/30 hover:bg-notion-hover transition-colors';
+                    
+                    const name = document.createElement('div');
+                    name.className = 'truncate text-notion-text';
+                    name.style.maxWidth = '50%';
+                    name.title = f.name;
+                    name.textContent = f.name;
+                    
+                    const meta = document.createElement('div');
+                    meta.className = 'text-notion-text-secondary text-xs';
+                    meta.textContent = formatSize(f.size);
+                    
+                    // Add file type icon
+                    const icon = document.createElement('div');
+                    icon.className = 'w-4 h-4 mr-2 flex-shrink-0';
+                    icon.innerHTML = '📄'; // You could make this more sophisticated based on file type
+                    
+                    const leftSide = document.createElement('div');
+                    leftSide.className = 'flex items-center min-w-0';
+                    leftSide.appendChild(icon);
+                    leftSide.appendChild(name);
+                    
+                    // Add remove button
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'ml-2 p-1 rounded-full bg-red-500/10 text-red-400 hover:bg-red-500/20 hover:text-red-300 transition-colors flex-shrink-0';
+                    removeBtn.innerHTML = '<i data-lucide="x" class="w-3 h-3"></i>';
+                    // Reinitialize Lucide icons for the new element
+                    lucide.createIcons();
+                    removeBtn.title = `Remove ${f.name}`;
+                    removeBtn.setAttribute('aria-label', `Remove ${f.name}`);
+                    removeBtn.addEventListener('click', function() {
+                        removeFileFromList(i);
+                    });
+                    
+                    const rightSide = document.createElement('div');
+                    rightSide.className = 'flex items-center space-x-2';
+                    rightSide.appendChild(meta);
+                    rightSide.appendChild(removeBtn);
+                    
+                    item.appendChild(leftSide);
+                    item.appendChild(rightSide);
+                    frag.appendChild(item);
+                }
+                
+                const summary = document.createElement('div');
+                summary.className = 'text-notion-text-secondary text-sm mt-2 p-2 bg-notion-input rounded';
+                summary.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <strong>${files.length} file(s) selected</strong><br>
+                            Total size: ${formatSize(validation.totalSize)}<br>
+                            ${validation.valid ? '✅ Ready to upload' : '❌ Please fix errors above'}
+                        </div>
+                        <button type="button" id="clear-all-files" class="btn-secondary px-3 py-1 rounded text-xs font-medium text-notion-text hover:text-white flex items-center space-x-1">
+                            <i data-lucide="trash-2" class="w-3 h-3"></i>
+                            <span>Clear All</span>
+                        </button>
+                    </div>
+                `;
+                
+                fileList.appendChild(frag);
+                fileList.appendChild(summary);
+                
+                // Reinitialize Lucide icons for new elements
+                lucide.createIcons();
+                
+                // Add clear all functionality
+                const clearAllBtn = summary.querySelector('#clear-all-files');
+                if (clearAllBtn) {
+                    clearAllBtn.addEventListener('click', function() {
+                        if (confirm('Are you sure you want to remove all selected files?')) {
+                            clearAllFiles();
+                        }
+                    });
+                }
+            }
+
+            function removeFileFromList(indexToRemove) {
+                if (!fileInput.files || indexToRemove < 0 || indexToRemove >= fileInput.files.length) return;
+                
+                const dt = new DataTransfer();
+                for (let i = 0; i < fileInput.files.length; i++) {
+                    if (i !== indexToRemove) {
+                        dt.items.add(fileInput.files[i]);
+                    }
+                }
+                fileInput.files = dt.files;
+                renderFileList(fileInput.files);
+                updateUploadButtonState();
+                
+                // Show feedback
+                showNotification('File removed from upload queue', 'success');
+            }
+
+            function clearAllFiles() {
+                const dt = new DataTransfer();
+                fileInput.files = dt.files;
+                renderFileList(fileInput.files);
+                updateUploadButtonState();
+                showNotification('All files cleared from upload queue', 'success');
+            }
+
+            function updateUploadButtonState() {
+                const hasFiles = fileInput.files && fileInput.files.length > 0;
+                const policyOk = policyInput.value && policyInput.value.trim().length > 0;
+                const filesValid = hasFiles ? validateFiles(fileInput.files).valid : false;
+                
+                if (hasFiles && policyOk && filesValid) {
+                    uploadBtn.disabled = false;
+                    uploadBtn.setAttribute('aria-disabled', 'false');
+                    uploadBtn.classList.remove('opacity-60');
+                } else {
+                    uploadBtn.disabled = true;
+                    uploadBtn.setAttribute('aria-disabled', 'true');
+                    uploadBtn.classList.add('opacity-60');
+                }
+            }
+
+            // wire events
+            fileInput.addEventListener('change', function(e) {
+                renderFileList(e.target.files);
+                updateUploadButtonState();
+            });
+
+            policyInput.addEventListener('input', function() {
+                updateUploadButtonState();
+                // Sync button selection with input value
+                const val = policyInput.value.split(',').map(a => a.trim()).filter(Boolean);
+                document.querySelectorAll('.attr-btn').forEach(btn => {
+                    if (val.includes(btn.getAttribute('data-attr'))) {
+                        btn.classList.add('bg-notion-accent/20', 'text-notion-accent');
+                        btn.classList.remove('bg-notion-card', 'text-notion-text-secondary');
+                        btn.setAttribute('aria-pressed', 'true');
+                    } else {
+                        btn.classList.remove('bg-notion-accent/20', 'text-notion-accent');
+                        btn.classList.add('bg-notion-card', 'text-notion-text-secondary');
+                        btn.setAttribute('aria-pressed', 'false');
+                    }
+                });
+            });
+
+            // Attribute button click toggling
+            document.querySelectorAll('.attr-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const attr = this.getAttribute('data-attr');
+                    let current = policyInput.value.split(',').map(a => a.trim()).filter(Boolean);
+                    if (this.classList.contains('bg-notion-accent/20')) {
+                        // Remove
+                        current = current.filter(a => a !== attr);
+                    } else {
+                        // Add
+                        if (!current.includes(attr)) current.push(attr);
+                    }
+                    policyInput.value = current.join(', ');
+                    // Trigger input event for sync
+                    policyInput.dispatchEvent(new Event('input'));
+                });
+            });
+
+            // Enhanced drag/drop with better visual feedback
+            let dragCounter = 0;
+            
+            uploadZone.addEventListener('dragenter', function(e) {
+                e.preventDefault();
+                dragCounter++;
+                uploadZone.classList.add('dragover');
+            });
+            
+            uploadZone.addEventListener('dragover', function(e) {
+                e.preventDefault();
+            });
+            
+            uploadZone.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                dragCounter--;
+                if (dragCounter === 0) {
+                    uploadZone.classList.remove('dragover');
+                }
+            });
+            
+            uploadZone.addEventListener('drop', function(e) {
+                e.preventDefault();
+                dragCounter = 0;
+                uploadZone.classList.remove('dragover');
+                
+                if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    // assignment to fileInput.files may be read-only in some browsers; use a DataTransfer when available
+                    try {
+                        const dt = new DataTransfer();
+                        for (let i = 0; i < e.dataTransfer.files.length; i++) dt.items.add(e.dataTransfer.files[i]);
+                        fileInput.files = dt.files;
+                    } catch (err) {
+                        // fallback: some browsers allow direct assign
+                        fileInput.files = e.dataTransfer.files;
+                    }
+                    renderFileList(fileInput.files);
+                    updateUploadButtonState();
                 }
             });
 
-            xhr.onload = function() {
-                progressBar.style.width = '100%';
-                progressPercent.textContent = '100%';
-                progressTime.textContent = 'Upload complete!';
-                setTimeout(() => {
-                    progressContainer.style.display = 'none';
-                    const response = JSON.parse(xhr.responseText);
-                    if (response.success) {
-                        window.location.reload();
+            // Upload handling
+            uploadForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                if (!fileInput.files || fileInput.files.length === 0) return;
+                if (!policyInput.value || policyInput.value.trim().length === 0) return;
+
+                const formData = new FormData();
+                for (let i = 0; i < fileInput.files.length; i++) formData.append('file', fileInput.files[i]);
+                formData.append('policy', policyInput.value.trim());
+
+                const xhr = new XMLHttpRequest();
+                currentXhr = xhr;
+                xhr.open('POST', uploadForm.getAttribute('action') || '/upload', true);
+
+                // UI: show progress, disable inputs
+                progressContainer.style.display = 'block';
+                progressBar.style.width = '0%';
+                progressBar.setAttribute('aria-valuenow', '0');
+                progressPercent.textContent = '0%';
+                progressTime.textContent = 'Starting...';
+                cancelBtn.disabled = false;
+                cancelBtn.setAttribute('aria-disabled', 'false');
+                uploadBtn.disabled = true;
+                uploadBtn.setAttribute('aria-disabled', 'true');
+                uploadBtn.innerHTML = '<div class="loading-spinner inline-block mr-2"></div><span>Uploading...</span>';
+                fileInput.disabled = true;
+                policyInput.disabled = true;
+
+                let startTime = null;
+                xhr.upload.addEventListener('progress', function(evt) {
+                    if (!startTime) startTime = Date.now();
+                    if (evt.lengthComputable) {
+                        const percent = Math.round((evt.loaded / evt.total) * 100);
+                        progressBar.style.width = percent + '%';
+                        progressBar.setAttribute('aria-valuenow', String(percent));
+                        progressPercent.textContent = percent + '%';
+                        const elapsed = (Date.now() - startTime) / 1000;
+                        const speed = evt.loaded / Math.max(elapsed, 0.001);
+                        const remaining = evt.total - evt.loaded;
+                        const eta = speed > 0 ? (remaining / speed) : 0;
+                        progressTime.textContent = eta > 1 ? `~${Math.ceil(eta)}s left` : 'Almost done';
                     }
-                }, 1200);
-            };
+                });
 
-            xhr.onerror = function() {
-                progressTime.textContent = 'Upload failed.';
-            };
+                xhr.onload = function() {
+                    progressBar.style.width = '100%';
+                    progressBar.setAttribute('aria-valuenow', '100');
+                    progressPercent.textContent = '100%';
+                    progressTime.textContent = 'Processing...';
+                    cancelBtn.disabled = true;
+                    cancelBtn.setAttribute('aria-disabled', 'true');
 
-            xhr.send(formData);
-        });
+                    // try to parse response JSON safely
+                    setTimeout(() => {
+                        let json = null;
+                        try { 
+                            json = JSON.parse(xhr.responseText); 
+                        } catch (err) { 
+                            console.error('Failed to parse server response:', err);
+                        }
+                        
+                        if (xhr.status === 200 && json && json.success) {
+                            showNotification('Files uploaded successfully!', 'success');
+                            progressTime.textContent = 'Upload complete!';
+                            setTimeout(() => {
+                                window.location.reload();
+                            }, 1000);
+                        } else {
+                            // re-enable inputs so user can retry
+                            fileInput.disabled = false;
+                            policyInput.disabled = false;
+                            renderFileList(fileInput.files);
+                            updateUploadButtonState();
+                            
+                            // Restore upload button
+                            uploadBtn.innerHTML = '<i data-lucide="upload" class="w-4 h-4"></i><span>Upload file</span>';
+                            // Reinitialize Lucide icons
+                            lucide.createIcons();
+                            
+                            const errorMessage = (json && json.message) ? json.message : 
+                                (xhr.status >= 500) ? 'Server error occurred. Please try again.' :
+                                (xhr.status >= 400) ? 'Upload failed. Please check your files and try again.' :
+                                'Upload finished but status unclear.';
+                            
+                            showNotification(errorMessage, 'error');
+                            progressTime.textContent = 'Upload failed';
+                            setTimeout(() => { progressContainer.style.display = 'none'; }, 2000);
+                        }
+                    }, 900);
+                };
 
-        document.getElementById('cancel-upload').addEventListener('click', function() {
-            if (currentXhr) {
-                currentXhr.abort();
-                document.getElementById('progress-time').textContent = 'Upload cancelled.';
-                setTimeout(() => {
-                    document.getElementById('progress-container').style.display = 'none';
-                }, 1200);
+                xhr.onerror = function() {
+                    progressTime.textContent = 'Upload failed.';
+                    cancelBtn.disabled = true;
+                    cancelBtn.setAttribute('aria-disabled', 'true');
+                    fileInput.disabled = false;
+                    policyInput.disabled = false;
+                    updateUploadButtonState();
+                    uploadBtn.innerHTML = '<i data-lucide="upload" class="w-4 h-4"></i><span>Upload file</span>';
+                    // Reinitialize Lucide icons
+                    lucide.createIcons();
+                    showNotification('Network error occurred. Please check your connection and try again.', 'error');
+                    setTimeout(() => { progressContainer.style.display = 'none'; }, 2000);
+                };
+
+                xhr.ontimeout = function() {
+                    progressTime.textContent = 'Upload timed out.';
+                    cancelBtn.disabled = true;
+                    cancelBtn.setAttribute('aria-disabled', 'true');
+                    fileInput.disabled = false;
+                    policyInput.disabled = false;
+                    updateUploadButtonState();
+                    uploadBtn.innerHTML = '<i data-lucide="upload" class="w-4 h-4"></i><span>Upload file</span>';
+                    // Reinitialize Lucide icons
+                    lucide.createIcons();
+                    showNotification('Upload timed out. Please try again with smaller files.', 'error');
+                    setTimeout(() => { progressContainer.style.display = 'none'; }, 2000);
+                };
+
+                xhr.send(formData);
+            });
+
+            // Cancel upload
+            cancelBtn.addEventListener('click', function() {
+                if (currentXhr) {
+                    currentXhr.abort();
+                    progressTime.textContent = 'Upload cancelled.';
+                    cancelBtn.disabled = true;
+                    cancelBtn.setAttribute('aria-disabled', 'true');
+                    fileInput.disabled = false;
+                    policyInput.disabled = false;
+                    updateUploadButtonState();
+                    uploadBtn.innerHTML = '<i data-lucide="upload" class="w-4 h-4"></i><span>Upload file</span>';
+                    // Reinitialize Lucide icons
+                    lucide.createIcons();
+                    showNotification('Upload cancelled.', 'error');
+                    setTimeout(() => { progressContainer.style.display = 'none'; }, 900);
+                }
+            });
+
+            // initial state
+            renderFileList(fileInput.files);
+            updateUploadButtonState();
+        })();
+
+        // Change Password Modal functionality
+        document.addEventListener('DOMContentLoaded', function(){
+            const openBtn = document.getElementById('change-password-btn');
+            const modal = document.getElementById('change-password-modal');
+            const closeBtn = document.getElementById('close-change-password');
+            const firstInput = document.getElementById('modal_new_password');
+
+            if (!openBtn || !modal || !closeBtn || !firstInput) return;
+
+            const confirmInput = document.getElementById('modal_confirm_password');
+            const toggleBtn = document.getElementById('toggle-password-visibility');
+            const submitBtn = document.getElementById('change-password-submit');
+            const errorEl = document.getElementById('password-error');
+
+            function openModal(){
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                modal.setAttribute('aria-hidden', 'false');
+                // focus first input for accessibility
+                setTimeout(()=> firstInput.focus(), 60);
             }
+
+            function closeModal(){
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                modal.setAttribute('aria-hidden', 'true');
+                // Reset form
+                document.getElementById('change-password-form').reset();
+                errorEl.style.display = 'none';
+                submitBtn.disabled = true;
+                submitBtn.setAttribute('aria-disabled', 'true');
+                try { openBtn.focus(); } catch (e) { /* ignore */ }
+            }
+
+            // show/hide password toggle
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', function(){
+                    const icon = toggleBtn.querySelector('i');
+                    if (firstInput.type === 'password') {
+                        firstInput.type = 'text';
+                        toggleBtn.setAttribute('aria-label', 'Hide password');
+                        icon.setAttribute('data-lucide', 'eye-off');
+                        lucide.createIcons();
+                    } else {
+                        firstInput.type = 'password';
+                        toggleBtn.setAttribute('aria-label', 'Show password');
+                        icon.setAttribute('data-lucide', 'eye');
+                        lucide.createIcons();
+                    }
+                });
+            }
+
+            // validate matching passwords with better UX
+            function validatePasswords(){
+                const p1 = firstInput.value || '';
+                const p2 = (confirmInput && confirmInput.value) || '';
+                
+                // Clear previous styling
+                firstInput.classList.remove('border-red-500', 'border-green-500');
+                if (confirmInput) confirmInput.classList.remove('border-red-500', 'border-green-500');
+                
+                if (p1.length === 0 || p2.length === 0) {
+                    errorEl.style.display = 'none';
+                    submitBtn.disabled = true;
+                    submitBtn.setAttribute('aria-disabled', 'true');
+                    return;
+                }
+                
+                // Password strength validation
+                if (p1.length < 8) {
+                    errorEl.textContent = 'Password must be at least 8 characters long.';
+                    errorEl.style.display = 'block';
+                    firstInput.classList.add('border-red-500');
+                    submitBtn.disabled = true;
+                    submitBtn.setAttribute('aria-disabled', 'true');
+                    return;
+                }
+                
+                if (p1 === p2) {
+                    errorEl.style.display = 'none';
+                    firstInput.classList.add('border-green-500');
+                    if (confirmInput) confirmInput.classList.add('border-green-500');
+                    submitBtn.disabled = false;
+                    submitBtn.setAttribute('aria-disabled', 'false');
+                } else {
+                    errorEl.textContent = 'Passwords do not match.';
+                    errorEl.style.display = 'block';
+                    if (confirmInput) confirmInput.classList.add('border-red-500');
+                    submitBtn.disabled = true;
+                    submitBtn.setAttribute('aria-disabled', 'true');
+                }
+            }
+
+            if (confirmInput) {
+                firstInput.addEventListener('input', validatePasswords);
+                confirmInput.addEventListener('input', validatePasswords);
+            }
+
+            // Handle form submission
+            const form = document.getElementById('change-password-form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    if (submitBtn.disabled) return;
+                    
+                    // Show loading state
+                    const originalText = submitBtn.innerHTML;
+                    submitBtn.disabled = true;
+                    submitBtn.innerHTML = '<span>Changing...</span>';
+                    
+                    // Submit form data
+                    const formData = new FormData(form);
+                    fetch(form.action, {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            showNotification('Password changed successfully!', 'success');
+                            closeModal();
+                        } else {
+                            showNotification(data.message || 'Failed to change password. Please try again.', 'error');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        showNotification('An error occurred. Please try again.', 'error');
+                    })
+                    .finally(() => {
+                        submitBtn.disabled = false;
+                        submitBtn.innerHTML = originalText;
+                    });
+                });
+            }
+
+            openBtn.addEventListener('click', openModal);
+            closeBtn.addEventListener('click', closeModal);
+
+            // close on backdrop click
+            modal.addEventListener('click', function(e){
+                if (e.target === modal) closeModal();
+            });
+
+            // Enhanced keyboard navigation
+            document.addEventListener('keydown', function(e){
+                if (e.key === 'Escape' && modal.classList.contains('flex')) {
+                    closeModal();
+                }
+                // Ctrl/Cmd + Enter to submit form
+                if ((e.ctrlKey || e.metaKey) && e.key === 'Enter' && modal.classList.contains('flex') && !submitBtn.disabled) {
+                    form.dispatchEvent(new Event('submit'));
+                }
+            });
+
+            // Focus management for better accessibility
+            modal.addEventListener('keydown', function(e) {
+                if (e.key === 'Tab') {
+                    const focusableElements = modal.querySelectorAll('input, button');
+                    const firstElement = focusableElements[0];
+                    const lastElement = focusableElements[focusableElements.length - 1];
+
+                    if (e.shiftKey && document.activeElement === firstElement) {
+                        e.preventDefault();
+                        lastElement.focus();
+                    } else if (!e.shiftKey && document.activeElement === lastElement) {
+                        e.preventDefault();
+                        firstElement.focus();
+                    }
+                }
+            });
         });
     </script>
         <style>
@@ -460,5 +1114,12 @@
             vertical-align: bottom;
         }
     </style>
+    
+    <!-- Initialize Lucide Icons -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            lucide.createIcons();
+        });
+    </script>
 </body>
 </html>

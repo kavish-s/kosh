@@ -17,6 +17,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script>
         tailwind.config = {
             theme: {
@@ -45,6 +46,8 @@
             }
         }
     </script>
+    
+    
     <style>
         * { font-family: 'Sora', sans-serif; }
         h1, h2, h3, h4, h5, h6, .title-font { font-family: 'Space Grotesk', sans-serif; }
@@ -52,17 +55,156 @@
         @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         .notion-shadow { box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2); }
-        .btn-primary { background: #1e90ff; transition: none; }
-        .btn-primary:hover { background: #0066cc; }
-        .btn-secondary { background: rgba(255, 255, 255, 0.05); transition: none; }
-        .btn-secondary:hover { background: rgba(255, 255, 255, 0.1); }
+        .btn-primary { 
+            background: #1e90ff; 
+            transition: all 0.2s ease;
+            border: none;
+        }
+        .btn-primary:hover { 
+            background: #0066cc; 
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(30, 144, 255, 0.4);
+        }
+        .btn-secondary { 
+            background: rgba(255, 255, 255, 0.05); 
+            transition: all 0.2s ease; 
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .btn-secondary:hover { 
+            background: rgba(255, 255, 255, 0.1); 
+            border-color: rgba(255, 255, 255, 0.2);
+        }
         .btn-primary:focus, .btn-secondary:focus {
             outline: 2px solid #1e90ff;
             outline-offset: 2px;
         }
-        tbody tr:nth-child(even) { background-color: #181818; }
-        tbody tr:hover { background-color: #252525; }
-        th { padding-top: 24px !important; padding-bottom: 24px !important; }
+        
+        /* Action button styles */
+        .btn-action {
+            padding: 6px 8px;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 32px;
+            min-height: 32px;
+        }
+        .btn-action:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        .btn-action:focus {
+            outline: 2px solid #1e90ff;
+            outline-offset: 2px;
+        }
+        .btn-action-edit {
+            background: #1e90ff;
+            color: #ffffff;
+            border-color: #1e90ff;
+        }
+        .btn-action-edit:hover {
+            background: #0066cc;
+            color: #ffffff;
+            border-color: #0066cc;
+        }
+        .btn-action-delete {
+            background: #ef4444;
+            color: #ffffff;
+            border-color: #ef4444;
+        }
+        .btn-action-delete:hover {
+            background: #dc2626;
+            color: #ffffff;
+            border-color: #dc2626;
+        }
+        .btn-action-download {
+            background: #22c55e;
+            color: #ffffff;
+            border-color: #22c55e;
+        }
+        .btn-action-download:hover {
+            background: #16a34a;
+            color: #ffffff;
+            border-color: #16a34a;
+        }
+        tbody tr:nth-child(even) { background-color: rgba(255, 255, 255, 0.02); }
+        tbody tr:hover { 
+            background-color: #252525 !important; 
+            transition: background-color 0.15s ease;
+        }
+        th { padding-top: 16px !important; padding-bottom: 16px !important; }
+        
+        /* Input enhancements */
+        input[type="text"], input[type="date"] {
+            transition: all 0.2s ease;
+        }
+        input[type="text"]:focus, input[type="date"]:focus {
+            border-color: #1e90ff;
+            box-shadow: 0 0 0 3px rgba(30, 144, 255, 0.1);
+            outline: none;
+        }
+        
+        /* Checkbox styling */
+        input[type="checkbox"] {
+            accent-color: #1e90ff;
+        }
+        
+        /* Loading state */
+        .loading {
+            position: relative;
+            overflow: hidden;
+        }
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(30, 144, 255, 0.2), transparent);
+            animation: loading 1.5s infinite;
+        }
+        @keyframes loading {
+            0% { left: -100%; }
+            100% { left: 100%; }
+        }
+        
+        /* Responsive table */
+        @media (max-width: 768px) {
+            .table-container {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            table {
+                min-width: 600px;
+            }
+            #toast-root {
+                left: 10px !important;
+                right: 10px !important;
+                bottom: 10px !important;
+            }
+            #toast-root .pointer-events-auto {
+                max-width: none !important;
+            }
+        }
+        
+        /* Improved scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #404040;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
     </style>
 </head>
 <body class="bg-notion-bg text-notion-text font-content min-h-screen">
@@ -78,15 +220,11 @@
                 </div>
                 <div class="flex items-center space-x-4">
                     <a href="/dashboard" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium text-notion-accent hover:text-white flex items-center space-x-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12h18M9 6l-6 6 6 6"/>
-                        </svg>
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i>
                         <span>User Dashboard</span>
                     </a>
                     <a href="/logout" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium text-notion-text hover:text-white flex items-center space-x-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
-                        </svg>
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
                         <span>Sign out</span>
                     </a>
                 </div>
@@ -100,7 +238,8 @@
             <h2 class="text-3xl font-bold text-notion-text mb-2 font-title">Admin Dashboard</h2>
             <p class="text-notion-text-secondary text-lg font-content">Manage all users, attributes, and file policies on the network.</p>
         </div>
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        <div class="flex flex-col gap-8">
             <!-- Users Section -->
             <section class="h-full flex flex-col mb-8">
                 <div class="bg-notion-card border border-notion-border rounded-xl notion-shadow animate-scale-in h-full flex flex-col">
@@ -112,62 +251,102 @@
                             </h3>
                             <p class="text-notion-text-secondary text-base mt-1">Add, edit, or remove users and set their attributes.</p>
                         </div>
-                        <div class="flex flex-wrap gap-2">
-                            <button onclick="openUserModal()" class="btn-primary px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center space-x-2" aria-label="Add User">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                                </svg>
+                        <div class="flex flex-wrap gap-2 items-center">
+                            <button onclick="openUserModal()" class="btn-primary px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center" aria-label="Add User">
+                                <span class="inline-flex w-5 h-5 items-center justify-center mr-2">
+                                    <i data-lucide="plus" class="w-4 h-4"></i>
+                                </span>
                                 <span>Add User</span>
                             </button>
-                            <button type="button" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2" onclick="bulkDeleteUsers()" aria-label="Bulk Delete">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                                </svg>
+                            <button onclick="bulkDeleteUsers()" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium flex items-center" aria-label="Bulk Delete Users">
+                                <span class="inline-flex w-5 h-5 items-center justify-center mr-2">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </span>
                                 <span>Bulk Delete</span>
                             </button>
-                            <button type="button" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium flex items-center space-x-2" onclick="openBulkAttrModal()" aria-label="Bulk Set Attributes">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
-                                </svg>
+                            <button type="button" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium flex items-center" onclick="openBulkAttrModal()" aria-label="Bulk Set Attributes">
+                                <span class="inline-flex w-5 h-5 items-center justify-center mr-2">
+                                    <i data-lucide="list" class="w-4 h-4"></i>
+                                </span>
                                 <span>Bulk Set Attributes</span>
                             </button>
                         </div>
                     </div>
-                    <div class="p-4 flex items-center space-x-2">
-                        <input type="text" id="user-search" placeholder="Search users..." class="w-full px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text mb-2" onkeyup="filterUsers()">
-                        <button type="button" onclick="document.getElementById('user-search').value='';filterUsers();" class="btn-secondary px-2 py-2 rounded text-sm" aria-label="Clear search">
-                            &#10006;
-                        </button>
+                    <div class="p-4 flex flex-col gap-2">
+                        <div class="flex items-center space-x-2">
+                            <input type="text" id="user-search" placeholder="Search users..." class="flex-1 px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text" onkeyup="filterUsers()">
+                            <input type="text" id="attr-filter" placeholder="Filter by attributes..." class="flex-1 px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text" onkeyup="filterUsers()">
+                            <button type="button" onclick="document.getElementById('user-search').value='';document.getElementById('attr-filter').value='';filterUsers();" class="btn-secondary px-3 py-2 rounded text-sm" aria-label="Clear search">
+                                <i data-lucide="x" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                        <div class="text-xs text-notion-text-secondary">
+                            <span class="mr-4">💡 Tip: Use Ctrl+K to focus search</span>
+                            <span id="user-count-status">Showing all users</span>
+                        </div>
                     </div>
                     <div class="p-6 flex-1 overflow-x-auto">
                         <form id="user-bulk-form">
-                        <table class="min-w-full divide-y divide-notion-border" id="users-table">
-                            <thead>
-                                <tr>
-                                    <th class="px-2"><input type="checkbox" onclick="toggleAllUsers(this)" aria-label="Select all users"></th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">User</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Attributes</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-notion-border">
-                                {% for user, attrs in users.items() %}
-                                <tr class="hover:bg-notion-hover transition">
-                                    <td class="px-2"><input type="checkbox" name="user_bulk" value="{{ user }}" aria-label="Select user {{ user }}"></td>
-                                    <td class="px-4 py-2 font-medium">{{ user }}</td>
-                                    <td class="px-4 py-2">{{ attrs|join(', ') }}</td>
-                                    <td class="px-4 py-2">
-                                        <div class="flex flex-col items-start space-y-1">
-                                            <a href="#" onclick="openEditUserModal('{{ user }}', '{{ attrs|join(', ') }}')" class="text-notion-accent hover:underline" aria-label="Edit user {{ user }}">Edit</a>
-                                            <a href="/admin/delete_user/{{ user }}" class="text-red-500 hover:underline" onclick="return confirm('Delete user?')" aria-label="Delete user {{ user }}">Delete</a>
-                                            <a href="#" onclick="forceLogoutUser('{{ user }}')" class="text-yellow-400 hover:underline" title="Force logout" aria-label="Force logout {{ user }}">Logout</a>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                        <div id="user-no-results" class="text-notion-text-secondary text-center py-4 hidden">No users found.</div>
+                            <table class="min-w-full divide-y divide-notion-border" id="users-table">
+                                <thead>
+                                    <tr>
+                                        <th class="px-2 py-3 text-left">
+                                            <input type="checkbox" onclick="toggleAllUsers(this)" aria-label="Select all users" class="rounded border-notion-border bg-notion-input">
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">User</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Attributes</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-notion-border" id="users-tbody">
+                                    {% for user, attrs in users.items() %}
+                                    <tr class="hover:bg-notion-hover transition-colors duration-150">
+                                        <td class="px-2 py-3">
+                                            <input type="checkbox" name="user_bulk" value="{{ user }}" aria-label="Select user {{ user }}" class="rounded border-notion-border bg-notion-input">
+                                        </td>
+                                        <td class="px-4 py-3 font-medium text-notion-text">{{ user }}</td>
+                                        {# Normalize different user value shapes: dict with 'attributes', list, or string #}
+                                        {% if attrs is mapping %}
+                                            {% set attr_list = attrs.get('attributes') if attrs.get('attributes') is not none else attrs %}
+                                        {% elif attrs is string %}
+                                            {% set attr_list = [attrs] %}
+                                        {% else %}
+                                            {% set attr_list = attrs or [] %}
+                                        {% endif %}
+                                        <td class="px-4 py-3">
+                                            <div class="flex flex-wrap gap-1">
+                                                {% for attr in attr_list %}
+                                                <span class="inline-flex px-2 py-1 text-xs rounded-full bg-notion-accent/20 text-notion-accent">{{ attr }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <div class="flex flex-col sm:flex-row items-start space-y-1 sm:space-y-0 sm:space-x-2">
+                                                {# Build a safe attribute string for HTML attributes (escape single quotes) #}
+                                                {% set attr_str = attr_list|join(', ') %}
+                                                <button type="button" class="btn-action btn-action-edit edit-user-link" 
+                                                       data-user='{{ user|replace("'", "&#39;") }}' 
+                                                       data-attrs='{{ attr_str|replace("'", "&#39;") }}' 
+                                                       aria-label="Edit user {{ user }}"
+                                                       title="Edit user">
+                                                    <i data-lucide="edit-2" class="w-4 h-4"></i>
+                                                </button>
+                                                <button type="button" class="btn-action btn-action-delete delete-user-link" 
+                                                       data-user='{{ user|replace("'", "&#39;") }}' 
+                                                       aria-label="Delete user {{ user }}"
+                                                       title="Delete user">
+                                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            <div id="user-no-results" class="text-notion-text-secondary text-center py-8 hidden">
+                                <div class="text-lg mb-2">No users found</div>
+                                <div class="text-sm">Try adjusting your search criteria</div>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -175,7 +354,7 @@
             <!-- Policies Section -->
             <section class="h-full flex flex-col mb-8">
                 <div class="bg-notion-card border border-notion-border rounded-xl notion-shadow animate-scale-in h-full flex flex-col">
-                    <div class="p-6 border-b border-notion-border flex items-center justify-between">
+                    <div class="p-6 border-b border-notion-border flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                         <div>
                             <h3 class="text-xl font-semibold text-notion-text font-title flex items-center">
                                 File Policies
@@ -183,56 +362,82 @@
                             </h3>
                             <p class="text-notion-text-secondary text-sm mt-1">Set and manage file access policies.</p>
                         </div>
-                        <button onclick="openPolicyModal()" class="btn-primary px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center space-x-2">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-                            </svg>
-                            <span>Add Policy</span>
-                        </button>
+                        <div class="flex flex-wrap gap-2 items-center">
+                            <button onclick="openPolicyModal()" class="btn-primary px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center space-x-2">
+                                <i data-lucide="plus" class="w-4 h-4"></i>
+                                <span>Add Policy</span>
+                            </button>
+                            <button onclick="bulkDeletePolicies()" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium flex items-center" aria-label="Bulk Delete Policies">
+                                <span class="inline-flex w-5 h-5 items-center justify-center mr-2">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </span>
+                                <span>Bulk Delete</span>
+                            </button>
+                        </div>
                     </div>
                     <div class="p-4 flex items-center space-x-2">
-                        <input type="text" id="policy-search" placeholder="Search policies..." class="w-full px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text mb-2" onkeyup="filterPolicies()">
-                        <button type="button" onclick="document.getElementById('policy-search').value='';filterPolicies();" class="btn-secondary px-2 py-2 rounded text-sm" aria-label="Clear search">
-                            &#10006;
+                        <input type="text" id="policy-search" placeholder="Search policies..." class="flex-1 px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text" onkeyup="filterPolicies()">
+                        <button type="button" onclick="document.getElementById('policy-search').value='';filterPolicies();" class="btn-secondary px-3 py-2 rounded text-sm" aria-label="Clear search">
+                            <i data-lucide="x" class="w-4 h-4"></i>
                         </button>
                     </div>
                     <div class="p-6 flex-1 overflow-x-auto">
                         <form id="policy-bulk-form">
-                        <table class="min-w-full divide-y divide-notion-border" id="policies-table">
-                            <thead>
-                                <tr>
-                                    <th class="px-2"><input type="checkbox" onclick="toggleAllPolicies(this)" aria-label="Select all policies"></th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">File</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Policy</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Key</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-notion-border">
-                                {% for file, policy_obj in policies.items() %}
-                                <tr class="hover:bg-notion-hover transition">
-                                    <td class="px-2"><input type="checkbox" name="policy_bulk" value="{{ file }}" aria-label="Select policy for {{ file }}"></td>
-                                    <td class="px-4 py-2 font-medium">{{ file }}</td>
-                                    <td class="px-4 py-2">{{ policy_obj.policy if policy_obj.policy else '' }}</td>
-                                    <td class="px-4 py-2">{{ policy_obj.key if policy_obj.key else '' }}</td>
-                                    <td class="px-4 py-2">
-                                        <div class="flex flex-col items-start space-y-1">
-                                            <a href="#" class="text-notion-accent hover:underline edit-policy-link" 
-                                               data-file="{{ file }}" 
-                                               data-policy="{{ policy_obj.policy or '' }}" 
-                                               data-key="{{ policy_obj.key or '' }}"
-                                               aria-label="Edit policy for {{ file }}">
-                                               Edit
-                                            </a>
-                                            <a href="/admin/delete_policy/{{ file }}" class="text-red-500 hover:underline" onclick="return confirm('Delete policy?')" aria-label="Delete policy for {{ file }}">Delete</a>
-                                            <a href="#" onclick="previewPolicyAccess('{{ file }}')" class="text-green-400 hover:underline" title="Preview access" aria-label="Preview access for {{ file }}">Preview</a>
-                                        </div>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                        <div id="policy-no-results" class="text-notion-text-secondary text-center py-4 hidden">No policies found.</div>
+                            <table class="min-w-full divide-y divide-notion-border" id="policies-table">
+                                <thead>
+                                    <tr>
+                                        <th class="px-2 py-3 text-left">
+                                            <input type="checkbox" onclick="toggleAllPolicies(this)" aria-label="Select all policies" class="rounded border-notion-border bg-notion-input">
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">File</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Policy</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Key</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-notion-border">
+                                    {% for file, policy_obj in policies.items() %}
+                                    <tr class="hover:bg-notion-hover transition-colors duration-150">
+                                        <td class="px-2 py-3">
+                                            <input type="checkbox" name="policy_bulk" value="{{ file }}" aria-label="Select policy for {{ file }}" class="rounded border-notion-border bg-notion-input">
+                                        </td>
+                                        <td class="px-4 py-3 font-medium text-notion-text">{{ file }}</td>
+                                        <td class="px-4 py-3">
+                                            {% if policy_obj.policy %}
+                                                <div class="flex flex-wrap gap-1">
+                                                    {% for attr in policy_obj.policy.split(',') %}
+                                                    <span class="inline-flex px-2 py-1 text-xs rounded-full bg-notion-accent/20 text-notion-accent">{{ attr.strip() }}</span>
+                                                    {% endfor %}
+                                                </div>
+                                            {% else %}
+                                                <span class="text-notion-text-secondary italic">No policy set</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="px-4 py-3 text-notion-text-secondary">
+                                            {{ policy_obj.key if policy_obj.key else 'Auto-generated' }}
+                                        </td>
+                                        <td class="px-4 py-3">
+                                            <div class="flex flex-col sm:flex-row items-start space-y-1 sm:space-y-0 sm:space-x-2">
+                                                <button type="button" class="btn-action btn-action-edit edit-policy-link" 
+                                                    data-file="{{ file }}" 
+                                                    data-policy="{{ policy_obj.policy or '' }}" 
+                                                    aria-label="Edit policy for {{ file }}"
+                                                    title="Edit policy">
+                                                    <i data-lucide="edit-2" class="w-4 h-4"></i>
+                                                </button>
+                                                <button type="button" class="btn-action btn-action-delete" onclick="if(confirm('Delete policy?')) deletePolicy('{{ file }}'); return false;" aria-label="Delete policy for {{ file }}" title="Delete policy">
+                                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            <div id="policy-no-results" class="text-notion-text-secondary text-center py-8 hidden">
+                                <div class="text-lg mb-2">No policies found</div>
+                                <div class="text-sm">Try adjusting your search criteria</div>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -253,41 +458,61 @@
                         <table class="min-w-full divide-y divide-notion-border">
                             <thead>
                                 <tr>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">File Name</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Size</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Owner</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Upload Date</th>
-                                    <th class="px-4 py-2 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Actions</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">File Name</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Size</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Owner</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Upload Date</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-notion-border">
                                 {% for file in all_files %}
-                                <tr class="hover:bg-notion-hover transition">
-                                    <td class="px-4 py-2 font-medium">{{ file.name }}</td>
-                                    <td class="px-4 py-2">{{ file.size }}</td>
-                                    <td class="px-4 py-2">{{ file.owner }}</td>
-                                    <td class="px-4 py-2">{{ file.upload_date }}</td>
-                                    <td class="px-4 py-2">
-                                        <div class="flex flex-col items-start space-y-1">
-                                            <a href="/download/{{ file.name }}" class="text-notion-accent hover:underline" aria-label="Download {{ file.name }}">Download</a>
-                                            <a href="#" onclick="deleteFile('{{ file.name }}')" class="text-red-500 hover:underline" aria-label="Delete {{ file.name }}">Delete</a>
+                                <tr class="hover:bg-notion-hover transition-colors duration-150">
+                                    <td class="px-4 py-3 font-medium text-notion-text">{{ file.name }}</td>
+                                    <td class="px-4 py-3 text-notion-text-secondary">{{ file.size }}</td>
+                                    <td class="px-4 py-3 text-notion-text-secondary">{{ file.owner }}</td>
+                                    <td class="px-4 py-3 text-notion-text-secondary">{{ file.upload_date }}</td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex flex-col sm:flex-row items-start space-y-1 sm:space-y-0 sm:space-x-2">
+                                            <a href="/download/{{ file.name }}" class="btn-action btn-action-download" aria-label="Download {{ file.name }}" title="Download file">
+                                                <i data-lucide="download" class="w-4 h-4"></i>
+                                            </a>
+                                            <button type="button" onclick="if(confirm('Delete file?')) deleteFile('{{ file.name }}'); return false;" class="btn-action btn-action-delete" aria-label="Delete {{ file.name }}" title="Delete file">
+                                                <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                            </button>
                                         </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="px-4 py-8 text-center text-notion-text-secondary">
+                                        <div class="text-lg mb-2">No files uploaded yet</div>
+                                        <div class="text-sm">Files will appear here once uploaded</div>
                                     </td>
                                 </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
-                        <div id="file-no-results" class="text-notion-text-secondary text-center py-4 hidden">No files found.</div>
                     </div>
                 </div>
             </section>
         </div>
-        <div class="mt-12 grid grid-cols-1 lg:grid-cols-2 gap-8">
+        
+        <div class="mt-12 flex flex-col gap-8">
             <!-- Audit Logs -->
             <div class="bg-notion-card border border-notion-border rounded-xl notion-shadow p-6">
                 <h4 class="text-lg font-semibold text-notion-text font-title mb-2">Audit Logs</h4>
+                <div class="flex flex-wrap gap-4 items-center mb-4">
+                    <label class="text-sm text-notion-text-secondary">From:
+                        <input type="date" id="audit-from" class="ml-2 px-2 py-1 rounded border border-notion-border bg-notion-input text-notion-text" onchange="filterAuditLogs()">
+                    </label>
+                    <label class="text-sm text-notion-text-secondary">To:
+                        <input type="date" id="audit-to" class="ml-2 px-2 py-1 rounded border border-notion-border bg-notion-input text-notion-text" onchange="filterAuditLogs()">
+                    </label>
+                    <button type="button" class="btn-secondary px-3 py-1 rounded text-sm" onclick="document.getElementById('audit-from').value='';document.getElementById('audit-to').value='';filterAuditLogs();">Clear</button>
+                </div>
                 <div class="overflow-x-auto max-h-80">
-                    <table class="min-w-full divide-y divide-notion-border">
+                    <table class="min-w-full divide-y divide-notion-border" id="audit-table">
                         <thead>
                             <tr>
                                 <th class="px-4 py-2 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Time</th>
@@ -296,7 +521,7 @@
                                 <th class="px-4 py-2 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Details</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-notion-border">
+                        <tbody class="divide-y divide-notion-border" id="audit-tbody">
                             {% for log in audit_logs %}
                             <tr class="hover:bg-notion-hover transition">
                                 <td class="px-4 py-2">{{ log.time }}</td>
@@ -313,14 +538,14 @@
             <!-- Attribute Management -->
             <div class="bg-notion-card border border-notion-border rounded-xl notion-shadow p-6">
                 <h4 class="text-lg font-semibold text-notion-text font-title mb-2">Attribute Management</h4>
-                <form id="attr-form" class="flex flex-col space-y-2">
+                <form id="attr-form" class="flex flex-col space-y-2" onsubmit="return false;">
                     <div class="flex space-x-2">
-                        <input type="text" id="new-attr" placeholder="Add new attribute..." class="flex-1 px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text">
+                        <input type="text" id="new-attr" name="new-attr" placeholder="Add new attribute..." class="flex-1 px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text" onkeydown="if(event.key==='Enter'){event.preventDefault();addAttribute();}">
                         <button type="button" class="btn-primary px-3 py-2 rounded text-white" onclick="addAttribute()">Add</button>
                     </div>
                     <div class="flex flex-wrap gap-3 mt-2">
                         {% for attr in all_attributes %}
-                        <span class="bg-notion-accent text-white px-4 py-2 rounded-full flex items-center shadow-sm transition-all duration-150 hover:bg-notion-accent-hover">
+                        <span class="bg-notion-accent/20 text-notion-accent px-3 py-2 rounded-full flex items-center shadow-sm transition-all duration-150 hover:bg-notion-accent/30">
                             <span class="mr-2">{{ attr }}</span>
                             <button type="button"
                                 class="ml-1 px-2 py-1 rounded-full bg-notion-card text-notion-text-secondary hover:bg-notion-hover hover:text-white transition"
@@ -332,37 +557,96 @@
                         {% endfor %}
                     </div>
                 </form>
+                    <div id="attr-error" class="text-red-400 text-sm mt-2" style="display:none;"></div>
             </div>
         </div>
     </main>
-<!-- Modals for Add/Edit User, Policy, Bulk Actions, Preview, etc. -->
+<!-- Modals for Add/Edit User, Policy, Bulk Actions, etc. -->
 <div id="modal-root"></div>
+<div id="toast-root" class="fixed bottom-6 right-6 z-50 space-y-2 pointer-events-none"></div>
 <script>
-// Utility: Show modal
-function showModal(html) {
-    const root = document.getElementById('modal-root');
-    root.innerHTML = `<div class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50" onclick="closeModal(event)">
-        <div class="bg-notion-card p-6 rounded-xl shadow-xl min-w-[320px] max-w-lg relative animate-fade-in" onclick="event.stopPropagation();">
-            <button onclick="closeModal()" class="absolute top-2 right-2 text-notion-text-secondary">&times;</button>
-            ${html}
-        </div>
-    </div>`;
-}
-function closeModal(e) {
-    if (!e || e.target === e.currentTarget) {
-        document.getElementById('modal-root').innerHTML = '';
+try {
+    // Utility: Show modal
+    function showModal(html) {
+        const root = document.getElementById('modal-root');
+        root.innerHTML = `<div class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50" onclick="closeModal(event)">
+            <div class="bg-notion-card p-6 rounded-xl shadow-xl min-w-[320px] max-w-lg relative animate-fade-in" onclick="event.stopPropagation();">
+                <button onclick="closeModal()" class="absolute top-2 right-2 text-notion-text-secondary hover:text-notion-text text-xl leading-none">&times;</button>
+                ${html}
+            </div>
+        </div>`;
     }
-}
+
+    function closeModal(e) {
+        if (!e || e.target === e.currentTarget) {
+            document.getElementById('modal-root').innerHTML = '';
+        }
+    }
+
+    // Utility: Show loading state
+    function showLoading(element, text = 'Loading...') {
+        if (element) {
+            element.style.opacity = '0.6';
+            element.style.pointerEvents = 'none';
+            element.setAttribute('data-original-text', element.textContent);
+            element.textContent = text;
+        }
+    }
+
+    function hideLoading(element) {
+        if (element) {
+            element.style.opacity = '1';
+            element.style.pointerEvents = 'auto';
+            const originalText = element.getAttribute('data-original-text');
+            if (originalText) {
+                element.textContent = originalText;
+                element.removeAttribute('data-original-text');
+            }
+        }
+    }
 
 // User search/filter
 function filterUsers() {
     const input = document.getElementById('user-search').value.toLowerCase();
+    const attrFilter = document.getElementById('attr-filter').value.toLowerCase();
     const rows = document.querySelectorAll('#users-table tbody tr');
+    const totalCount = rows.length;
+    let visibleCount = 0;
+    
     rows.forEach(row => {
         const user = row.children[1].textContent.toLowerCase();
         const attrs = row.children[2].textContent.toLowerCase();
-        row.style.display = (user.includes(input) || attrs.includes(input)) ? '' : 'none';
+        const matchesText = user.includes(input) || attrs.includes(input);
+        // compute attribute tokens from the row and from the filter
+        const rowAttrs = attrs.split(',').map(s => s.trim()).filter(Boolean);
+        const filterTokens = attrFilter.split(',').map(s => s.trim()).filter(Boolean);
+        const matchesAttr = filterTokens.length === 0 || filterTokens.every(tok => rowAttrs.includes(tok));
+        const shouldShow = (matchesText && matchesAttr);
+        
+        row.style.display = shouldShow ? '' : 'none';
+        if (shouldShow) visibleCount++;
     });
+    
+    // Update no results display
+    const noResults = document.getElementById('user-no-results');
+    const table = document.getElementById('users-table');
+    if (visibleCount === 0) {
+        table.style.display = 'none';
+        noResults.style.display = 'block';
+    } else {
+        table.style.display = 'table';
+        noResults.style.display = 'none';
+    }
+    
+    // Update status indicator
+    const status = document.getElementById('user-count-status');
+    if (status) {
+        if (input || attrFilter) {
+            status.textContent = `Showing ${visibleCount} of ${totalCount} users`;
+        } else {
+            status.textContent = `Showing all ${totalCount} users`;
+        }
+    }
 }
 function toggleAllUsers(source) {
     document.querySelectorAll('input[name="user_bulk"]').forEach(cb => cb.checked = source.checked);
@@ -393,14 +677,34 @@ function openBulkAttrModal() {
         e.preventDefault();
         const attrs = this.attrs.value;
         const selected = Array.from(document.querySelectorAll('input[name="user_bulk"]:checked')).map(cb => cb.value);
-        fetch('/admin/bulk_set_attrs', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ users: selected, attrs })
-        }).then(r => r.json()).then(res => {
-            if (res.success) window.location.reload();
-            else alert('Error setting attributes');
-        });
+            if (!selected.length) return showToast('Select users to set attributes', 'error');
+            fetch('/admin/bulk_set_attrs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                body: JSON.stringify({ users: selected, attrs })
+            }).then(async r => {
+                if (!r.ok) {
+                    const data = await r.json().catch(()=>({}));
+                    const err = data && data.error ? data.error : 'Error setting attributes';
+                    showToast(err, 'error');
+                    return;
+                }
+                const data = await r.json().catch(()=>({}));
+                if (data && data.success) {
+                    // update table rows for selected users
+                    const inputs = Array.from(document.querySelectorAll('#users-table input[name="user_bulk"]'));
+                    inputs.forEach(i => {
+                        if (selected.includes(i.value)) {
+                            const tr = i.closest('tr');
+                            if (tr) tr.children[2].textContent = attrs;
+                        }
+                    });
+                    closeModal();
+                    showToast('Attributes updated', 'success');
+                } else {
+                    showToast('Error setting attributes', 'error');
+                }
+            }).catch(()=>showToast('Network error', 'error'));
     };
 }
 function openUserModal() {
@@ -412,55 +716,149 @@ function openUserModal() {
         </form>`);
     document.getElementById('add-user-form').onsubmit = function(e) {
         e.preventDefault();
+        const user = this.user.value.trim();
+        const attrs = this.attrs.value.trim();
+        if (!user) return showToast('Username required', 'error');
         fetch('/admin/add_user', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user: this.user.value, attrs: this.attrs.value })
-        }).then(r => r.json()).then(res => {
-            if (res.success) window.location.reload();
-            else alert('Error adding user');
-        });
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            body: JSON.stringify({ user: user, attributes: attrs })
+        }).then(async res => {
+            if (!res.ok) {
+                const data = await res.json().catch(()=>({}));
+                const err = data && data.error ? data.error : 'Error adding user';
+                return showToast(err, 'error');
+            }
+            const data = await res.json().catch(()=>({}));
+            if (data && data.success) {
+                // Insert new row into users table
+                const tbody = document.querySelector('#users-table tbody');
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-notion-hover transition';
+                const checkboxTd = document.createElement('td');
+                checkboxTd.className = 'px-2';
+                checkboxTd.innerHTML = `<input type="checkbox" name="user_bulk" value="${user}" aria-label="Select user ${user}">`;
+                const userTd = document.createElement('td');
+                userTd.className = 'px-4 py-2 font-medium';
+                userTd.textContent = user;
+                const attrsTd = document.createElement('td');
+                attrsTd.className = 'px-4 py-2';
+                attrsTd.textContent = attrs;
+                const actionsTd = document.createElement('td');
+                actionsTd.className = 'px-4 py-2';
+                actionsTd.innerHTML = `<div class="flex flex-col sm:flex-row items-start space-y-1 sm:space-y-0 sm:space-x-2">
+                    <button type="button" class="btn-action btn-action-edit edit-user-link" data-user='${user.replace(/'/g, "&#39;")}' data-attrs='${attrs.replace(/'/g, "&#39;")}' aria-label="Edit user ${user}" title="Edit user">
+                        <i data-lucide="edit-2" class="w-4 h-4"></i>
+                    </button>
+                    <button type="button" class="btn-action btn-action-delete delete-user-link" data-user='${user.replace(/'/g, "&#39;")}' aria-label="Delete user ${user}" title="Delete user">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>`;
+                tr.appendChild(checkboxTd);
+                tr.appendChild(userTd);
+                tr.appendChild(attrsTd);
+                tr.appendChild(actionsTd);
+                tbody.prepend(tr);
+                // Re-attach handlers for the new links
+                setupAdminLinks();
+                closeModal();
+                showToast('User added', 'success');
+                setTimeout(reinitializeLucideIcons, 10);
+            } else {
+                showToast('Error adding user', 'error');
+            }
+        }).catch(()=>showToast('Network error', 'error'));
     };
 }
 function openEditUserModal(user, attrs) {
+    // Escape single quotes and angle brackets to avoid breaking HTML when injecting into the modal
+    const safeUser = (user || '').replace(/'/g, "&#39;").replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    // attrs is a comma-separated string
+    const selectedAttrs = (attrs || '').split(',').map(a => a.trim()).filter(Boolean);
+    const allAttributes = window.allAttributes || [];
+    // Build buttons for all attributes
+    let buttons = '';
+    allAttributes.forEach(attr => {
+        const selected = selectedAttrs.includes(attr) ? 'selected' : '';
+        buttons += `<button type='button' class='attr-btn px-2 py-1 text-xs rounded-full mr-2 mb-2 ${selected ? 'bg-notion-accent/20 text-notion-accent' : 'bg-notion-card text-notion-text-secondary'}' data-attr='${attr.replace(/'/g, "&#39;")}' aria-pressed='${selected ? 'true' : 'false'}'>${attr}</button>`;
+    });
+    const target = '/admin/edit_user/' + encodeURIComponent(user);
     showModal(`<h3 class='text-lg font-bold mb-2'>Edit User</h3>
         <form id='edit-user-form'>
-            <input type='text' name='user' value='${user}' readonly class='w-full mb-3 px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text'>
-            <input type='text' name='attrs' value='${attrs}' required class='w-full mb-3 px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text'>
+            <input type='text' name='user' value='${safeUser}' readonly class='w-full mb-3 px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text'>
+            <div class='mb-3' id='attr-btn-group'>${buttons}</div>
             <button type='submit' class='btn-primary px-4 py-2 rounded text-white'>Save</button>
         </form>`);
+    // Toggle button selection
+    document.querySelectorAll('.attr-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.classList.toggle('bg-notion-accent/20');
+            this.classList.toggle('text-notion-accent');
+            this.classList.toggle('bg-notion-card');
+            this.classList.toggle('text-notion-text-secondary');
+            this.setAttribute('aria-pressed', this.classList.contains('bg-notion-accent/20') ? 'true' : 'false');
+        });
+    });
     document.getElementById('edit-user-form').onsubmit = function(e) {
         e.preventDefault();
-        fetch('/admin/edit_user', {
+        const selected = Array.from(document.querySelectorAll('.attr-btn.bg-notion-accent\\/20')).map(btn => btn.getAttribute('data-attr'));
+        fetch(target, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ user: this.user.value, attrs: this.attrs.value })
-        }).then(r => r.json()).then(res => {
-            if (res.success) window.location.reload();
-            else alert('Error editing user');
-        });
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            body: JSON.stringify({ attributes: selected.join(', ') })
+        }).then(async res => {
+            if (!res.ok) {
+                const data = await res.json().catch(()=>({}));
+                const err = data && data.error ? data.error : 'Error editing user';
+                alert(err);
+                return;
+            }
+            const data = await res.json().catch(()=>({}));
+            if (data && data.success) {
+                // Update the attributes cell for the user in the table
+                const inputs = Array.from(document.querySelectorAll('#users-table input[name="user_bulk"]'));
+                const match = inputs.find(i => i.value === user);
+                if (match) {
+                    const tr = match.closest('tr');
+                    if (tr) {
+                        tr.children[2].textContent = selected.join(', ');
+                    }
+                }
+                closeModal();
+                showToast('User updated', 'success');
+            } else {
+                showToast('Error editing user', 'error');
+            }
+        }).catch(()=>alert('Network error'));
     };
 }
-function forceLogoutUser(user) {
-    fetch('/admin/force_logout', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user })
-    }).then(r => r.json()).then(res => {
-        if (res.success) alert('User logged out');
-        else alert('Error');
-    });
-}
+
 
 // Policy search/filter
 function filterPolicies() {
     const input = document.getElementById('policy-search').value.toLowerCase();
     const rows = document.querySelectorAll('#policies-table tbody tr');
+    let visibleCount = 0;
+    
     rows.forEach(row => {
         const file = row.children[1].textContent.toLowerCase();
         const policy = row.children[2].textContent.toLowerCase();
-        row.style.display = (file.includes(input) || policy.includes(input)) ? '' : 'none';
+        const shouldShow = file.includes(input) || policy.includes(input);
+        
+        row.style.display = shouldShow ? '' : 'none';
+        if (shouldShow) visibleCount++;
     });
+    
+    // Update no results display
+    const noResults = document.getElementById('policy-no-results');
+    const table = document.getElementById('policies-table');
+    if (visibleCount === 0) {
+        table.style.display = 'none';
+        noResults.style.display = 'block';
+    } else {
+        table.style.display = 'table';
+        noResults.style.display = 'none';
+    }
 }
 function toggleAllPolicies(source) {
     document.querySelectorAll('input[name="policy_bulk"]').forEach(cb => cb.checked = source.checked);
@@ -486,56 +884,235 @@ function openPolicyModal() {
         <form id='add-policy-form'>
             <input type='text' name='file' placeholder='File name' required class='w-full mb-3 px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text'>
             <input type='text' name='policy' placeholder='Comma separated attributes' required class='w-full mb-3 px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text'>
-            <input type='text' name='key' placeholder='Key' required class='w-full mb-3 px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text'>
             <button type='submit' class='btn-primary px-4 py-2 rounded text-white'>Add</button>
         </form>`);
     document.getElementById('add-policy-form').onsubmit = function(e) {
         e.preventDefault();
         fetch('/admin/add_policy', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ file: this.file.value, policy: this.policy.value, key: this.key.value })
-        }).then(r => r.json()).then(res => {
-            if (res.success) window.location.reload();
-            else alert('Error adding policy');
-        });
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ file: this.file.value, policy: this.policy.value }).toString()
+        }).then(() => window.location.reload()).catch(() => alert('Error adding policy'));
     };
 }
 function openEditPolicyModal(file, policy, key) {
+    // policy is a comma-separated string
+    const selectedAttrs = (policy || '').split(',').map(a => a.trim()).filter(Boolean);
+    const allAttributes = window.allAttributes || [];
+    let buttons = '';
+    allAttributes.forEach(attr => {
+        const selected = selectedAttrs.includes(attr) ? 'selected' : '';
+        buttons += `<button type='button' class='attr-btn px-2 py-1 text-xs rounded-full mr-2 mb-2 ${selected ? 'bg-notion-accent/20 text-notion-accent' : 'bg-notion-card text-notion-text-secondary'}' data-attr='${attr.replace(/'/g, "&#39;")}' aria-pressed='${selected ? 'true' : 'false'}'>${attr}</button>`;
+    });
     showModal(`<h3 class='text-lg font-bold mb-2'>Edit Policy</h3>
         <form id='edit-policy-form'>
             <input type='text' name='file' value='${file}' readonly class='w-full mb-3 px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text'>
-            <input type='text' name='policy' value='${policy}' required class='w-full mb-3 px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text'>
-            <input type='text' name='key' value='${key}' required class='w-full mb-3 px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text'>
+            <div class='mb-3' id='policy-btn-group'>${buttons}</div>
             <button type='submit' class='btn-primary px-4 py-2 rounded text-white'>Save</button>
         </form>`);
+    // Toggle button selection
+    document.querySelectorAll('.attr-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.classList.toggle('bg-notion-accent/20');
+            this.classList.toggle('text-notion-accent');
+            this.classList.toggle('bg-notion-card');
+            this.classList.toggle('text-notion-text-secondary');
+            this.setAttribute('aria-pressed', this.classList.contains('bg-notion-accent/20') ? 'true' : 'false');
+        });
+    });
     document.getElementById('edit-policy-form').onsubmit = function(e) {
         e.preventDefault();
-        fetch('/admin/edit_policy', {
+        const selected = Array.from(document.querySelectorAll('#policy-btn-group .attr-btn.bg-notion-accent\\/20')).map(btn => btn.getAttribute('data-attr'));
+        // POST to the server route that accepts the filename in the URL
+        const target = '/admin/edit_policy/' + encodeURIComponent(this.file.value);
+        const form = this;
+        fetch(target, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ file: this.file.value, policy: this.policy.value, key: this.key.value })
-        }).then(r => r.json()).then(res => {
-            if (res.success) window.location.reload();
-            else alert('Error editing policy');
-        });
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            body: new URLSearchParams({ policy: selected.join(', ') }).toString()
+        }).then(async res => {
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                const err = data && data.error ? data.error : 'Error editing policy';
+                showInlineError(form, err);
+                return;
+            }
+            const data = await res.json().catch(() => ({}));
+            if (data && data.success) {
+                // update the policies table cell for this file
+                const fileName = form.file.value;
+                const rows = document.querySelectorAll('#policies-table tbody tr');
+                rows.forEach(r => {
+                    if (r.querySelector('input[name="policy_bulk"]') && r.querySelector('input[name="policy_bulk"]').value === fileName) {
+                        const policyCell = r.children[2];
+                        if (policyCell) policyCell.textContent = selected.join(', ');
+                    }
+                });
+                closeModal();
+            } else {
+                const err = (data && data.error) ? data.error : 'Error editing policy';
+                showInlineError(form, err);
+            }
+        }).catch(() => showInlineError(form, 'Network error'));
     };
 }
 
-// Attach event listeners for edit policy links (after DOM loaded)
-document.addEventListener('DOMContentLoaded', function() {
+// show inline error inside modal form
+function showInlineError(form, message) {
+    let err = form.querySelector('.inline-error');
+    if (!err) {
+        err = document.createElement('div');
+        err.className = 'inline-error text-red-400 text-sm mt-2';
+        form.appendChild(err);
+    }
+    err.textContent = message;
+}
+
+// Audit Logs timeline filter
+function filterAuditLogs() {
+    const from = document.getElementById('audit-from').value;
+    const to = document.getElementById('audit-to').value;
+    const rows = document.querySelectorAll('#audit-tbody tr');
+    let shown = 0;
+    
+    rows.forEach(row => {
+        const timeCell = row.children[0];
+        if (!timeCell) return;
+        const timeStr = timeCell.textContent.trim();
+        // Parse as YYYY-MM-DD HH:MM:SS
+        const date = new Date(timeStr.replace(' ', 'T'));
+        let show = true;
+        
+        if (from) {
+            const fromDate = new Date(from);
+            if (date < fromDate) show = false;
+        }
+        if (to) {
+            // To date is inclusive, so add 1 day
+            const toDate = new Date(to);
+            toDate.setDate(toDate.getDate() + 1);
+            if (date >= toDate) show = false;
+        }
+        
+        row.style.display = show ? '' : 'none';
+        if (show) shown++;
+    });
+    
+    const noResults = document.getElementById('log-no-results');
+    if (noResults) {
+        noResults.style.display = shown ? 'none' : 'block';
+    }
+}
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // ESC to close modal
+    if (e.key === 'Escape') {
+        closeModal();
+    }
+    
+    // Ctrl/Cmd + K to focus search
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        const userSearch = document.getElementById('user-search');
+        if (userSearch) {
+            userSearch.focus();
+        }
+    }
+});
+// Enhanced toast helper with better positioning and animations
+function showToast(message, type = 'success') {
+    const root = document.getElementById('toast-root');
+    if (!root) return;
+    
+    const colors = {
+        success: 'bg-green-500',
+        error: 'bg-red-500',
+        warning: 'bg-yellow-500',
+        info: 'bg-blue-500'
+    };
+    
+    const icons = {
+        success: '<i data-lucide="check-circle" class="w-5 h-5"></i>',
+        error: '<i data-lucide="x-circle" class="w-5 h-5"></i>',
+        warning: '<i data-lucide="alert-triangle" class="w-5 h-5"></i>',
+        info: '<i data-lucide="info" class="w-5 h-5"></i>'
+    };
+    
+    const color = colors[type] || colors.success;
+    const icon = icons[type] || icons.success;
+    
+    const toast = document.createElement('div');
+    toast.className = `pointer-events-auto max-w-sm w-full rounded-lg px-4 py-3 text-white shadow-lg transform transition-all duration-300 ${color} opacity-0 translate-y-2 flex items-center space-x-2`;
+    toast.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.5)';
+    
+    toast.innerHTML = `
+        <div class="flex-shrink-0">${icon}</div>
+        <div class="flex-1 text-sm font-medium">${message}</div>
+        <button onclick="this.parentElement.remove()" class="flex-shrink-0 ml-2 text-white/80 hover:text-white">
+            <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+    `;
+    
+    root.appendChild(toast);
+    
+    // Trigger animation
+    setTimeout(() => {
+        toast.style.opacity = '1';
+        toast.style.transform = 'translateY(0)';
+    }, 10);
+    
+    // Auto-dismiss after 4 seconds
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-8px)';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+// Attach event listeners for policy and user links. Use a setup function so it runs even
+// if the DOMContentLoaded event already fired before this script executed.
+function setupAdminLinks() {
     document.querySelectorAll('.edit-policy-link').forEach(function(link) {
         link.addEventListener('click', function(e) {
             e.preventDefault();
             const file = this.getAttribute('data-file');
             const policy = this.getAttribute('data-policy');
-            const key = this.getAttribute('data-key');
-            openEditPolicyModal(file, policy, key);
+            openEditPolicyModal(file, policy);
         });
     });
-});
-function previewPolicyAccess(file) {
-    showModal(`<h3 class='text-lg font-bold mb-2'>Preview Access</h3><div>Users who match policy for <b>${file}</b> (not implemented)</div>`);
+    // Wire up edit and delete links for users
+    document.querySelectorAll('.edit-user-link').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const user = this.getAttribute('data-user');
+            const attrs = this.getAttribute('data-attrs') || '';
+            openEditUserModal(user, attrs);
+        });
+    });
+    document.querySelectorAll('.delete-user-link').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const user = this.getAttribute('data-user');
+            if (!user) return;
+            if (confirm('Delete user?')) deleteUser(user);
+        });
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        setupAdminLinks();
+        // Initialize status indicators
+        filterUsers();
+        filterPolicies();
+    });
+} else {
+    // DOM already ready — run immediately
+    setupAdminLinks();
+    // Initialize status indicators
+    filterUsers();
+    filterPolicies();
 }
 function deleteFile(filename) {
     fetch('/admin/delete_file', {
@@ -547,26 +1124,140 @@ function deleteFile(filename) {
         else alert('Error deleting file');
     });
 }
+function deleteUser(user) {
+    fetch('/admin/delete_user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user })
+    }).then(r => r.json()).then(res => {
+        if (res.success) {
+            // Find the checkbox input with matching value robustly (avoid CSS selector issues with special chars)
+            const inputs = Array.from(document.querySelectorAll('#users-table input[name="user_bulk"]'));
+            const match = inputs.find(i => i.value === user);
+            if (match) {
+                const tr = match.closest('tr');
+                if (tr) tr.remove();
+            }
+        } else {
+            alert('Error deleting user');
+        }
+    });
+}
+function deletePolicy(file) {
+    fetch('/admin/delete_policy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ file })
+    }).then(r => r.json()).then(res => {
+        if (res.success) {
+            const row = document.querySelector(`#policies-table input[value="${file}"]`)
+            if (row) row.closest('tr').remove();
+        } else {
+            alert('Error deleting policy');
+        }
+    });
+}
 function addAttribute() {
     const attr = document.getElementById('new-attr').value;
+    const errorDiv = document.getElementById('attr-error');
+    errorDiv.style.display = 'none';
+    errorDiv.textContent = '';
     fetch('/admin/add_attribute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ attr })
     }).then(r => r.json()).then(res => {
-        if (res.success) window.location.reload();
-        else alert('Error adding attribute');
+        if (res.success) {
+            document.getElementById('new-attr').value = '';
+            window.location.reload();
+        } else {
+            errorDiv.textContent = res.error || 'Error adding attribute';
+            errorDiv.style.display = '';
+        }
+    }).catch(() => {
+        errorDiv.textContent = 'Network error';
+        errorDiv.style.display = '';
     });
 }
 function removeAttribute(attr) {
+    const errorDiv = document.getElementById('attr-error');
+    errorDiv.style.display = 'none';
+    errorDiv.textContent = '';
     fetch('/admin/remove_attribute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ attr })
-    }).then(r => r.json()).then(res => {
-        if (res.success) window.location.reload();
-        else alert('Error removing attribute');
+    }).then(r => {
+        return r.json();
+    }).then(res => {
+        if (res.success) {
+            window.location.reload();
+        } else {
+            errorDiv.textContent = res.error || 'Error removing attribute';
+            errorDiv.style.display = '';
+        }
+    }).catch(err => {
+        errorDiv.textContent = 'Network error';
+        errorDiv.style.display = '';
     });
+}
+
+// Add direct click event listeners to attribute delete buttons
+setTimeout(() => {
+    const deleteButtons = document.querySelectorAll('button[onclick*="removeAttribute"]');
+    deleteButtons.forEach((btn) => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const onclickAttr = this.getAttribute('onclick');
+            const match = onclickAttr.match(/removeAttribute\('([^']+)'\)/);
+            if (match) {
+                const attrName = match[1];
+                removeAttribute(attrName);
+            }
+        });
+    });
+}, 1000);
+
+} catch (error) {
+    console.error('JavaScript error in admin script:', error);
+}
+</script>
+<script>
+// Make allAttributes available globally for modals
+window.allAttributes = {{ all_attributes|tojson|safe }};
+</script>
+<script>
+// Initialize Lucide icons
+document.addEventListener('DOMContentLoaded', function() {
+    lucide.createIcons();
+});
+
+// Re-initialize icons when new content is added via JavaScript
+function reinitializeLucideIcons() {
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+}
+
+// Store original functions
+const _originalShowModal = window.showModal;
+const _originalShowToast = window.showToast;
+
+// Override the showModal function to reinitialize icons
+if (typeof _originalShowModal === 'function') {
+    window.showModal = function(html) {
+        _originalShowModal(html);
+        setTimeout(reinitializeLucideIcons, 10);
+    };
+}
+
+// Override the showToast function to reinitialize icons  
+if (typeof _originalShowToast === 'function') {
+    window.showToast = function(message, type = 'success') {
+        _originalShowToast(message, type);
+        setTimeout(reinitializeLucideIcons, 10);
+    };
 }
 </script>
 </body>

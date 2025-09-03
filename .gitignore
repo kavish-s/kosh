@@ -1,5 +1,3 @@
-uploads/
-
 # Python cache
 __pycache__/
 *.py[cod]
@@ -11,10 +9,16 @@ env/
 ENV/
 venv/
 
-# Secret keys and user attributes
-app/data/*.key
-app/data/policies.json
+# Secret keys and sensitive data
+data/*.key
+data/policies.json
+data/users.json
+data/attributes.json
+data/audit_logs.jsonl
 app/user_keys/*.json
+data/users.json
+data/attributes.json
+data/audit_logs.jsonl
 
 # Encrypted files and private keys
 app/uploads/
@@ -40,4 +44,3 @@ build/
 
 # Environment variables
 .env
-app/data/policies.json
