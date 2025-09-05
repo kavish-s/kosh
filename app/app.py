@@ -6,7 +6,6 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 from .crypto import aes, abe_simulator as abe
 import os, json
 from datetime import datetime
-from datetime import datetime
 from io import BytesIO
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -45,22 +44,26 @@ def safe_load_json(file_path, default_value=None):
         return default_value
 
 def log_audit(user, action, details=None, ip=None):
-    import datetime, json
-    entry = {
-        'time': datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-        'user': user,
-        'action': action,
-        'details': details or '',
-        'ip': ip or ''
-    }
+    """Log audit events with proper error handling"""
     try:
+        entry = {
+            'time': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'user': str(user) if user else 'unknown',
+            'action': str(action) if action else 'unknown',
+            'details': str(details) if details else '',
+            'ip': str(ip) if ip else ''
+        }
+        
         with open(AUDIT_LOG_FILE, 'a') as f:
             f.write(json.dumps(entry) + '\n')
         
         # Emit real-time audit log update to admin dashboard
         socketio.emit('audit_log_added', entry, room='admin_updates')
-    except Exception:
-        pass
+
+    except Exception as e:
+        # Log to console if audit logging fails
+        print(f"Audit logging failed: {e}")
+
 
 def get_user_files(user_id):
     """Get list of files accessible to a user"""
@@ -185,16 +188,25 @@ def home():
     return render_template('index.html')
 
 
-# Only allow non-admin users to login via /login
 @app.route('/login', methods=['POST'])
 def login():
     user_id = request.form.get('user_id')
     password = request.form.get('password')
-    password = request.form.get('password')
-    with open(USERS_FILE) as f:
-        users = json.load(f)
-
-    # Verify user exists
+    
+    # Input validation
+    if not user_id or not password:
+        return "Username and password are required", 400
+    
+    # Sanitize inputs
+    user_id = user_id.strip()
+    if not user_id:
+        return "Username cannot be empty", 400
+    
+    try:
+        with open(USERS_FILE) as f:
+            users = json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        return "System error: Unable to load user data", 500
 
     # Verify user exists
     if user_id in users:
@@ -280,48 +292,123 @@ def change_password():
     user_id = session.get('user_id')
     if not user_id:
         return redirect(url_for('home'))
+    
     new_password = request.form.get('new_password')
+    
+    # Input validation
     if not new_password:
-        return "Password required", 400
-    with open(USERS_FILE) as f:
-        users = json.load(f)
+        flash('Password cannot be empty')
+        return redirect(url_for('dashboard'))
+    
+    # Sanitize and validate password
+    new_password = new_password.strip()
+    if len(new_password) < 6:
+        flash('Password must be at least 6 characters long')
+        return redirect(url_for('dashboard'))
+    
+    try:
+        with open(USERS_FILE) as f:
+            users = json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        flash('System error: Unable to load user data')
+        return redirect(url_for('dashboard'))
+    
     if user_id in users:
         users[user_id]['password'] = new_password
-        with open(USERS_FILE, 'w') as f:
-            json.dump(users, f)
-        log_audit(user_id, 'change_password', details='Password changed', ip=request.remote_addr)
-        flash('Password changed successfully!')
-        return redirect(url_for('dashboard'))
-    return "User not found", 404
+        try:
+            with open(USERS_FILE, 'w') as f:
+                json.dump(users, f, indent=2)
+            log_audit(user_id, 'change_password', details='Password changed', ip=request.remote_addr)
+            flash('Password changed successfully!')
+            return redirect(url_for('dashboard'))
+        except IOError:
+            flash('System error: Unable to save password change')
+            return redirect(url_for('dashboard'))
+    
+    flash('User not found')
+    return redirect(url_for('dashboard'))
 
 @app.route('/upload', methods=['POST'])
 def upload():
     if 'user_id' not in session:
-        return redirect(url_for('home'))
+        return jsonify(success=False, error='Not authenticated'), 401
+    
     files = request.files.getlist('file')
-    policy = request.form.get('policy')
-
-    # Defensive conversion
-    if isinstance(policy, dict):
-        policy = ' AND '.join([f"{k}={v}" for k, v in policy.items()])
-    elif isinstance(policy, list):
-        policy = ' AND '.join(policy)
+    policy = request.form.get('policy', '')
+    
+    # Input validation
+    if not files or all(not file.filename for file in files):
+        return jsonify(success=False, error='No files selected'), 400
+    
+    # Validate file types and sizes
+    allowed_extensions = {'txt', 'pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'gif', 'zip', 'rar'}
+    max_file_size = 10 * 1024 * 1024  # 10MB
+    
+    for file in files:
+        if not file.filename:
+            continue
+        
+        # Check file extension
+        if '.' in file.filename:
+            ext = file.filename.rsplit('.', 1)[1].lower()
+            if ext not in allowed_extensions:
+                return jsonify(success=False, error=f'File type .{ext} not allowed'), 400
+        
+        # Check file size
+        file.seek(0, os.SEEK_END)
+        size = file.tell()
+        file.seek(0)
+        if size > max_file_size:
+            return jsonify(success=False, error=f'File {file.filename} is too large (max 10MB)'), 400
+    
+    # Sanitize policy input
+    policy = policy.strip()
+    
+    try:
+        policies = safe_load_json(POLICIES_FILE, {})
+    except Exception:
+        return jsonify(success=False, error='System error: Unable to load policies'), 500
 
     uploaded_files = []
-    policies = safe_load_json(POLICIES_FILE, {})
-
+    
     for file in files:
-        filename = file.filename + '.enc'
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
-        with open(filepath, 'wb') as f_out:
-            aes.encrypt(file.stream, f_out)
-        policies[filename] = {'policy': policy, 'sender': session['user_id']}
-        uploaded_files.append(filename)
-        # Log upload event for each file
-        log_audit(session['user_id'], 'upload', details=f'Uploaded {filename}', ip=request.remote_addr)
-
-    with open(POLICIES_FILE, 'w') as f:
-        json.dump(policies, f)
+        if not file.filename:
+            continue
+            
+        try:
+            # Generate secure filename
+            original_filename = file.filename
+            filename = original_filename + '.enc'
+            
+            # Ensure filename is safe
+            filename = os.path.basename(filename)
+            
+            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            
+            # Encrypt and save file
+            with open(filepath, 'wb') as f_out:
+                aes.encrypt(file.stream, f_out)
+            
+            policies[filename] = {'policy': policy, 'sender': session['user_id']}
+            uploaded_files.append(filename)
+            
+            # Log upload event for each file
+            log_audit(session['user_id'], 'upload', details=f'Uploaded {original_filename}', ip=request.remote_addr)
+            
+        except Exception as e:
+            # Clean up any partially uploaded files
+            for uploaded_file in uploaded_files:
+                try:
+                    os.remove(os.path.join(UPLOAD_FOLDER, uploaded_file))
+                except:
+                    pass
+            return jsonify(success=False, error=f'Upload failed: {str(e)}'), 500
+    
+    try:
+        with open(POLICIES_FILE, 'w') as f:
+            json.dump(policies, f, indent=2)
+    except IOError:
+        return jsonify(success=False, error='System error: Unable to save policies'), 500
 
     # Broadcast file update to all connected dashboard users
     socketio.emit('file_uploaded', {
@@ -335,33 +422,51 @@ def upload():
 def download(filename):
     if 'user_id' not in session:
         return redirect(url_for('home'))
+    
     user_id = session['user_id']
-    if user_id == 'admin':
-        pass  # admin can download any file
-    else:
-        policies = safe_load_json(POLICIES_FILE, {})
-        policy_obj = policies.get(filename)
-        if not policy_obj:
-            return "Access Denied", 403
-        access_policy = policy_obj.get('policy') if isinstance(policy_obj, dict) else policy_obj
-        sender = policy_obj.get('sender') if isinstance(policy_obj, dict) else None
-        # Owners can always download their own files
-        if sender == user_id:
-            pass
+    
+    # Input validation and sanitization
+    if not filename:
+        return "Invalid filename", 400
+    
+    # Prevent directory traversal attacks
+    filename = os.path.basename(filename)
+    if not filename or filename in ['.', '..'] or '/' in filename or '\\' in filename:
+        return "Invalid filename", 400
+    
+    # Ensure filename has .enc extension for security
+    if not filename.endswith('.enc'):
+        return "Access Denied", 403
+    
+    try:
+        if user_id == 'admin':
+            pass  # admin can download any file
         else:
-            if isinstance(access_policy, str):
-                required_attrs = [a.strip() for a in access_policy.split(',') if a.strip()]
-            elif isinstance(access_policy, list):
-                required_attrs = access_policy
-            else:
-                required_attrs = []
-            if not abe.check_access(user_id, required_attrs):
+            policies = safe_load_json(POLICIES_FILE, {})
+            policy_obj = policies.get(filename)
+            if not policy_obj:
                 return "Access Denied", 403
+            access_policy = policy_obj.get('policy') if isinstance(policy_obj, dict) else policy_obj
+            sender = policy_obj.get('sender') if isinstance(policy_obj, dict) else None
+            # Owners can always download their own files
+            if sender == user_id:
+                pass
+            else:
+                if isinstance(access_policy, str):
+                    required_attrs = [a.strip() for a in access_policy.split(',') if a.strip()]
+                elif isinstance(access_policy, list):
+                    required_attrs = access_policy
+                else:
+                    required_attrs = []
+                if not abe.check_access(user_id, required_attrs):
+                    return "Access Denied", 403
+    except Exception as e:
+        print(f"Error checking access for {filename}: {e}")
+        return "Access Denied", 403
 
     encrypted_path = os.path.join(UPLOAD_FOLDER, filename)
     decrypted_stream = BytesIO()
-    # Log download event
-    log_audit(session['user_id'], 'download', details=f'Downloaded {filename}', ip=request.remote_addr)
+    
     try:
         with open(encrypted_path, 'rb') as f_in:
             aes.decrypt(f_in, decrypted_stream)
@@ -371,9 +476,16 @@ def download(filename):
         # This will catch HMAC verification errors
         print(f"Decryption or verification failed for {filename}: {e}")
         return "Access Denied: File is corrupt or has been tampered with.", 403
+    except Exception as e:
+        print(f"Unexpected error during decryption for {filename}: {e}")
+        return "System error: Unable to process file", 500
 
+    # Log download event
+    log_audit(session['user_id'], 'download', details=f'Downloaded {filename}', ip=request.remote_addr)
+    
     decrypted_stream.seek(0)
-    return send_file(decrypted_stream, download_name=filename.replace(".enc", ""), as_attachment=True)
+    original_name = filename.replace(".enc", "")
+    return send_file(decrypted_stream, download_name=original_name, as_attachment=True)
 
 @app.route('/logout')
 def logout():
@@ -385,23 +497,22 @@ def logout():
 
 
 @app.route('/admin')
-@app.route('/admin')
 def admin_dashboard():
-    # Admin dashboard — only accessible to admin user
-    # Admin dashboard — only accessible to admin user
+    """Admin dashboard — only accessible to admin user"""
     if session.get('user_id') != 'admin':
         return redirect(url_for('home'))
 
-    # Load users and policies
+    # Load users and policies with error handling
     try:
         with open(USERS_FILE) as f:
             users = json.load(f)
-    except Exception:
+    except (json.JSONDecodeError, FileNotFoundError):
         users = {}
+    
     try:
         with open(POLICIES_FILE) as f:
             policies = json.load(f)
-    except Exception:
+    except (json.JSONDecodeError, FileNotFoundError):
         policies = {}
 
     # Admin sees all files, regardless of policy
@@ -420,7 +531,7 @@ def admin_dashboard():
             if isinstance(p, dict):
                 owner = p.get('sender')
             all_files.append({'name': fname, 'size': size, 'owner': owner, 'upload_date': upload_date})
-    except Exception:
+    except (OSError, IOError):
         all_files = []
 
     # Load audit logs from file
@@ -431,9 +542,9 @@ def admin_dashboard():
                 try:
                     entry = json.loads(line)
                     audit_logs.append(entry)
-                except Exception:
+                except json.JSONDecodeError:
                     continue
-    except Exception:
+    except (IOError, OSError):
         audit_logs = []
     audit_logs = list(reversed(audit_logs))  # latest first
 
@@ -492,10 +603,25 @@ def admin_add_user():
             user_id = request.form.get('user_id') or request.form.get('user')
             raw = request.form.get('attributes', '')
 
+        # Input validation and sanitization
         if not user_id:
             if is_ajax:
                 return jsonify(success=False, error='user required'), 400
             return "User required", 400
+        
+        user_id = user_id.strip()
+        if not user_id:
+            if is_ajax:
+                return jsonify(success=False, error='user cannot be empty'), 400
+            return "User cannot be empty", 400
+        
+        # Validate user_id format (alphanumeric, underscore, dash only)
+        import re
+        if not re.match(r'^[A-Za-z0-9_-]+$', user_id):
+            if is_ajax:
+                return jsonify(success=False, error='Invalid user ID format'), 400
+            return "Invalid user ID format", 400
+        
         attributes, err = parse_and_validate_attrs(raw)
         if err:
             if is_ajax:
@@ -1057,4 +1183,4 @@ def handle_leave_admin():
 
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True, port=7130, host="0.0.0.0")
+    socketio.run(app, debug=False, port=7130, host="0.0.0.0")
