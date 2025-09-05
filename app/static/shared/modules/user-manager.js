@@ -83,10 +83,6 @@ class UserManager {
 
             const result = await response.json();
             if (result.success) {
-                selected.forEach(user => {
-                    const row = document.querySelector(`#users-table input[value="${user}"]`);
-                    if (row) row.closest('tr').remove();
-                });
                 toastManager.show(`${selected.length} users deleted`, 'success');
                 this.filter(); // Update count
             } else {
@@ -150,25 +146,6 @@ class UserManager {
 
             const data = await response.json().catch(() => ({}));
             if (data?.success) {
-                // Update table rows for selected users
-                const inputs = Array.from(document.querySelectorAll('#users-table input[name="user_bulk"]'));
-                inputs.forEach(input => {
-                    if (selected.includes(input.value)) {
-                        const tr = input.closest('tr');
-                        if (tr) {
-                            const attrCell = tr.children[2];
-                            attrCell.innerHTML = uiHelpers.formatAttributesAsHtml(attrs);
-
-                            // Update the edit button data attribute
-                            const editBtn = tr.querySelector('.edit-user-link');
-                            if (editBtn) {
-                                editBtn.setAttribute('data-attrs', attrs);
-                            }
-
-                            uiHelpers.refreshTailwindStyles(tr);
-                        }
-                    }
-                });
                 modalManager.close();
                 toastManager.show('Attributes updated', 'success');
             } else {
@@ -233,7 +210,6 @@ class UserManager {
 
             const data = await response.json().catch(() => ({}));
             if (data?.success) {
-                this.addToTable(user, attrs);
                 modalManager.close();
                 toastManager.show('User added', 'success');
             } else {
@@ -242,47 +218,6 @@ class UserManager {
         } catch (error) {
             toastManager.show('Network error', 'error');
         }
-    }
-
-    /**
-     * Add user row to table
-     * @param {string} user - Username
-     * @param {string} attrs - Attributes string
-     */
-    addToTable(user, attrs) {
-        const tbody = document.querySelector('#users-table tbody');
-        if (!tbody) return;
-
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-notion-hover transition';
-
-        tr.innerHTML = `
-            <td class="px-2">
-                <input type="checkbox" name="user_bulk" value="${uiHelpers.escapeHtml(user)}" 
-                    aria-label="Select user ${uiHelpers.escapeHtml(user)}">
-            </td>
-            <td class="px-4 py-2 font-medium">${uiHelpers.escapeHtml(user)}</td>
-            <td class="px-4 py-2">${uiHelpers.formatAttributesAsHtml(attrs)}</td>
-            <td class="px-4 py-2">
-                <div class="flex flex-col sm:flex-row items-start space-y-1 sm:space-y-0 sm:space-x-2">
-                    <button type="button" class="btn-action btn-action-edit edit-user-link" 
-                        data-user='${uiHelpers.escapeHtml(user)}' data-attrs='${uiHelpers.escapeHtml(attrs)}' 
-                        aria-label="Edit user ${uiHelpers.escapeHtml(user)}" title="Edit user">
-                        <i data-lucide="edit-2" class="w-4 h-4"></i>
-                    </button>
-                    <button type="button" class="btn-action btn-action-delete delete-user-link" 
-                        data-user='${uiHelpers.escapeHtml(user)}' 
-                        aria-label="Delete user ${uiHelpers.escapeHtml(user)}" title="Delete user">
-                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                    </button>
-                </div>
-            </td>
-        `;
-
-        tbody.prepend(tr);
-        adminLinks.setup(); // Re-attach handlers
-        setTimeout(uiHelpers.reinitializeLucideIcons, 10);
-        this.filter(); // Update count
     }
 
     /**
@@ -364,7 +299,6 @@ class UserManager {
 
             const data = await response.json().catch(() => ({}));
             if (data?.success) {
-                this.updateInTable(user, selected.join(', '));
                 modalManager.close();
                 toastManager.show('User updated', 'success');
             } else {
@@ -372,31 +306,6 @@ class UserManager {
             }
         } catch (error) {
             modalManager.showInlineError(form, 'Network error');
-        }
-    }
-
-    /**
-     * Update user in table
-     * @param {string} user - Username
-     * @param {string} attrs - New attributes
-     */
-    updateInTable(user, attrs) {
-        const inputs = Array.from(document.querySelectorAll('#users-table input[name="user_bulk"]'));
-        const match = inputs.find(i => i.value === user);
-        if (match) {
-            const tr = match.closest('tr');
-            if (tr) {
-                const attrCell = tr.children[2];
-                attrCell.innerHTML = uiHelpers.formatAttributesAsHtml(attrs);
-
-                // Update the edit button data attribute
-                const editBtn = tr.querySelector('.edit-user-link');
-                if (editBtn) {
-                    editBtn.setAttribute('data-attrs', attrs);
-                }
-
-                uiHelpers.refreshTailwindStyles(tr);
-            }
         }
     }
 
@@ -416,12 +325,6 @@ class UserManager {
 
             const result = await response.json();
             if (result.success) {
-                const inputs = Array.from(document.querySelectorAll('#users-table input[name="user_bulk"]'));
-                const match = inputs.find(i => i.value === user);
-                if (match) {
-                    const tr = match.closest('tr');
-                    if (tr) tr.remove();
-                }
                 toastManager.show('User deleted', 'success');
                 this.filter(); // Update count
             } else {
