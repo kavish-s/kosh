@@ -225,7 +225,9 @@
                                         <td class="px-2 py-3">
                                             <input type="checkbox" name="policy_bulk" value="{{ file }}" aria-label="Select policy for {{ file }}" class="rounded border-notion-border bg-notion-input">
                                         </td>
-                                        <td class="px-4 py-3 font-medium text-notion-text">{{ file }}</td>
+                                        <td class="px-4 py-3 font-medium text-notion-text">
+                                            <span class="block max-w-[220px] truncate filename" title="{{ file.name }}">{{ file.name }}</span>
+                                        </td>
                                         <td class="px-4 py-3">
                                             {% if policy_obj.policy %}
                                                 <div class="flex flex-wrap gap-1">
@@ -241,7 +243,7 @@
                                             {{ policy_obj.key if policy_obj.key else 'Auto-generated' }}
                                         </td>
                                         <td class="px-4 py-3">
-                                            <div class="flex flex-col sm:flex-row items-start space-y-1 sm:space-y-0 sm:space-x-2">
+                                            <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-2">
                                                 <button type="button" class="btn-action btn-action-edit edit-policy-link" 
                                                     data-file="{{ file }}" 
                                                     data-policy="{{ policy_obj.policy or '' }}" 
@@ -292,12 +294,14 @@
                             <tbody class="divide-y divide-notion-border">
                                 {% for file in all_files %}
                                 <tr class="hover:bg-notion-hover transition-colors duration-150">
-                                    <td class="px-4 py-3 font-medium text-notion-text">{{ file.name }}</td>
+                                    <td class="px-4 py-3 font-medium text-notion-text">
+                                        <span class="block max-w-[220px] truncate filename" title="{{ file.name }}">{{ file.name }}</span>
+                                    </td>
                                     <td class="px-4 py-3 text-notion-text-secondary">{{ file.size }}</td>
                                     <td class="px-4 py-3 text-notion-text-secondary">{{ file.owner }}</td>
                                     <td class="px-4 py-3 text-notion-text-secondary">{{ file.upload_date }}</td>
                                     <td class="px-4 py-3">
-                                        <div class="flex flex-col sm:flex-row items-start space-y-1 sm:space-y-0 sm:space-x-2">
+                                        <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-2">
                                             <a href="/download/{{ file.name }}" class="btn-action btn-action-download" aria-label="Download {{ file.name }}" title="Download file">
                                                 <i data-lucide="download" class="w-4 h-4"></i>
                                             </a>

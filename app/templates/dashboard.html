@@ -186,7 +186,7 @@
                                                     <i data-lucide="file" class="w-4 h-4 text-notion-accent"></i>
                                                 </div>
                                                 <div>
-                                                    <h4 class="text-notion-text font-medium filename" title="{{ file.filename.replace('.enc', '') }}">{{ file.filename.replace('.enc', '') }}</h4>
+                                                    <h4 class="text-notion-text font-medium filename block max-w-[220px] truncate" title="{{ file.filename.replace('.enc', '') }}">{{ file.filename.replace('.enc', '') }}</h4>
                                                     <p class="text-notion-text-secondary text-xs">Encrypted • Ready for download</p>
                                                     {% if file.sender %}
                                                         {% if file.is_owner %}
