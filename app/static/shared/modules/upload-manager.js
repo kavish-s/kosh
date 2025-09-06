@@ -437,18 +437,19 @@ class UploadManager {
 
     handleUploadFailure(xhr, json) {
         this.enableForm();
-        
-        const errorMessage = (json && json.message) ? json.message : 
-            (xhr.status >= 500) ? 'Server error occurred. Please try again.' :
-            (xhr.status >= 400) ? 'Upload failed. Please check your files and try again.' :
-            'Upload finished but status unclear.';
-        
+        let errorMessage = null;
+        if (json) {
+            errorMessage = json.error || json.message || null;
+        }
+        if (!errorMessage) {
+            errorMessage = (xhr.status >= 500) ? 'Server error occurred. Please try again.' :
+                (xhr.status >= 400) ? 'Upload failed. Please check your files and try again.' :
+                'Upload finished but status unclear.';
+        }
         this.notification.show(errorMessage, 'error');
-        
         if (this.elements.progressTime) {
             this.elements.progressTime.textContent = 'Upload failed';
         }
-        
         setTimeout(() => {
             if (this.elements.progressContainer) {
                 this.elements.progressContainer.style.display = 'none';

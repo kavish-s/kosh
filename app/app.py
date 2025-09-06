@@ -341,8 +341,23 @@ def upload():
         return jsonify(success=False, error='No files selected'), 400
     
     # Validate file types and sizes
-    allowed_extensions = {'txt', 'pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'gif', 'zip', 'rar'}
-    max_file_size = 10 * 1024 * 1024  # 10MB
+    # Allow more secure file types: documents, images, archives, code, spreadsheets, presentations
+    allowed_extensions = {
+        # Documents, spreadsheets, presentations
+        'txt', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'csv', 'rtf', 'odt', 'ods', 'odp',
+        # Images
+        'jpg', 'jpeg', 'png', 'gif', 'bmp', 'tiff', 'webp',
+        # Archives
+        'zip', 'rar', '7z', 'tar', 'gz', 'bz2',
+        # Code and config
+        'py', 'js', 'json', 'xml', 'html', 'css', 'md', 'yml', 'yaml',
+        'c', 'cpp', 'h', 'hpp', 'java', 'go', 'rb', 'php', 'sh', 'swift', 'ts', 'rs', 'pl', 'sql',
+        # Executables and installers
+        'apk', 'exe', 'dll', 'so', 'bin', 'iso', 'dmg', 'app', 'deb', 'rpm', 'msi', 'bat', 'ps1',
+        # Video files
+        'mp4', 'mov', 'avi', 'wmv', 'flv', 'mkv', 'webm', 'mpeg', 'mpg', 'm4v', '3gp', 'ts', 'vob', 'ogv', 'mxf', 'rm', 'swf'
+    }
+    max_file_size = 5 * 1024 * 1024 * 1024  # 5GB
     
     for file in files:
         if not file.filename:
@@ -351,7 +366,8 @@ def upload():
         # Check file extension
         if '.' in file.filename:
             ext = file.filename.rsplit('.', 1)[1].lower()
-            if ext not in allowed_extensions:
+            # Accept both lower and upper case extensions
+            if ext not in allowed_extensions and ext.upper() not in allowed_extensions:
                 return jsonify(success=False, error=f'File type .{ext} not allowed'), 400
         
         # Check file size
