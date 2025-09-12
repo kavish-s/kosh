@@ -32,6 +32,7 @@ class RealTimeManager {
     cacheDOMElements() {
         this.usersTable = document.querySelector('#users-tbody');
         this.policiesTable = document.querySelector('#policies-table tbody');
+        this.filesTable = document.querySelector('#files-tbody');
         this.auditTable = document.querySelector('#audit-tbody');
         this.attributesContainer = document.querySelector('.flex.flex-wrap.gap-3.mt-2');
     }
@@ -121,6 +122,19 @@ class RealTimeManager {
             console.log('📄 Policies bulk deleted:', data);
             data.files.forEach(file => this.removePolicyFromTable(file));
             toastManager.show(`${data.files.length} policies deleted`, 'warning');
+        });
+
+        // File management events
+        this.socket.on('file_uploaded', (data) => {
+            console.log('📁 File uploaded:', data);
+            this.addFileToTable(data.file);
+            toastManager.show(`File "${data.file.name}" uploaded`, 'success');
+        });
+
+        this.socket.on('file_deleted', (data) => {
+            console.log('📁 File deleted:', data);
+            this.removeFileFromTable(data.filename);
+            toastManager.show(`File "${data.filename}" deleted`, 'warning');
         });
 
         // Audit log events
@@ -266,32 +280,46 @@ class RealTimeManager {
     /**
      * Add policy to table (real-time)
      * @param {string} file - Filename
-     * @param {string} policy - Policy string
+     * @param {Object} policyObj - Policy object with policy and key properties
      */
-    addPolicyToTable(file, policy) {
+    addPolicyToTable(file, policyObj) {
         if (!this.policiesTable) return;
 
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-notion-hover transition-colors duration-150';
 
+        let policyHtml = '';
+        if (policyObj.policy) {
+            const attrs = policyObj.policy.split(',');
+            policyHtml = `
+                <div class="flex flex-wrap gap-1">
+                    ${attrs.map(attr => `<span class="inline-flex px-2 py-1 text-xs rounded-full bg-notion-accent/20 text-notion-accent">${uiHelpers.escapeHtml(attr.trim())}</span>`).join('')}
+                </div>
+            `;
+        } else {
+            policyHtml = '<span class="text-notion-text-secondary italic">No policy set</span>';
+        }
+
         tr.innerHTML = `
             <td class="px-2 py-3">
                 <input type="checkbox" name="policy_bulk" value="${uiHelpers.escapeHtml(file)}" 
-                    aria-label="Select policy ${uiHelpers.escapeHtml(file)}">
+                    aria-label="Select policy for ${uiHelpers.escapeHtml(file)}" class="rounded border-notion-border bg-notion-input">
             </td>
-            <td class="px-4 py-3 font-medium text-notion-text">${uiHelpers.escapeHtml(file)}</td>
-            <td class="px-4 py-3">${uiHelpers.escapeHtml(policy)}</td>
-            <td class="px-4 py-3">N/A</td>
+            <td class="px-4 py-3 font-medium text-notion-text">
+                <span class="block max-w-[220px] truncate filename" title="${uiHelpers.escapeHtml(file)}">${uiHelpers.escapeHtml(file)}</span>
+            </td>
+            <td class="px-4 py-3">${policyHtml}</td>
+            <td class="px-4 py-3 text-notion-text-secondary">${uiHelpers.escapeHtml(policyObj.key || 'Auto-generated')}</td>
             <td class="px-4 py-3">
-                <div class="flex flex-col sm:flex-row items-start space-y-1 sm:space-y-0 sm:space-x-2">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-2">
                     <button type="button" class="btn-action btn-action-edit edit-policy-link" 
-                        data-file='${uiHelpers.escapeHtml(file)}' data-policy='${uiHelpers.escapeHtml(policy)}' 
-                        aria-label="Edit policy ${uiHelpers.escapeHtml(file)}" title="Edit policy">
+                        data-file="${uiHelpers.escapeHtml(file)}" data-policy="${uiHelpers.escapeHtml(policyObj.policy || '')}" 
+                        aria-label="Edit policy for ${uiHelpers.escapeHtml(file)}" title="Edit policy">
                         <i data-lucide="edit-2" class="w-4 h-4"></i>
                     </button>
                     <button type="button" class="btn-action btn-action-delete" 
-                        onclick="policyManager.delete('${uiHelpers.escapeHtml(file)}')" 
-                        aria-label="Delete policy ${uiHelpers.escapeHtml(file)}" title="Delete policy">
+                        onclick="if(confirm('Delete policy?')) deletePolicy('${uiHelpers.escapeHtml(file)}'); return false;" 
+                        aria-label="Delete policy for ${uiHelpers.escapeHtml(file)}" title="Delete policy">
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                     </button>
                 </div>
@@ -306,9 +334,9 @@ class RealTimeManager {
     /**
      * Update policy in table (real-time)
      * @param {string} file - Filename
-     * @param {string} policy - Policy string
+     * @param {Object} policyObj - Policy object with policy and key properties
      */
-    updatePolicyInTable(file, policy) {
+    updatePolicyInTable(file, policyObj) {
         if (!this.policiesTable) return;
 
         const inputs = Array.from(this.policiesTable.querySelectorAll('input[name="policy_bulk"]'));
@@ -316,12 +344,29 @@ class RealTimeManager {
         if (match) {
             const tr = match.closest('tr');
             if (tr) {
+                // Update policy cell (3rd cell)
                 const policyCell = tr.children[2];
-                policyCell.textContent = policy;
+                let policyHtml = '';
+                if (policyObj.policy) {
+                    const attrs = policyObj.policy.split(',');
+                    policyHtml = `
+                        <div class="flex flex-wrap gap-1">
+                            ${attrs.map(attr => `<span class="inline-flex px-2 py-1 text-xs rounded-full bg-notion-accent/20 text-notion-accent">${uiHelpers.escapeHtml(attr.trim())}</span>`).join('')}
+                        </div>
+                    `;
+                } else {
+                    policyHtml = '<span class="text-notion-text-secondary italic">No policy set</span>';
+                }
+                policyCell.innerHTML = policyHtml;
 
+                // Update key cell (4th cell)
+                const keyCell = tr.children[3];
+                keyCell.textContent = policyObj.key || 'Auto-generated';
+
+                // Update edit button data attributes
                 const editBtn = tr.querySelector('.edit-policy-link');
                 if (editBtn) {
-                    editBtn.setAttribute('data-policy', policy);
+                    editBtn.setAttribute('data-policy', policyObj.policy || '');
                 }
 
                 uiHelpers.refreshTailwindStyles(tr);
@@ -441,6 +486,75 @@ class RealTimeManager {
                 userManager.filter();
             }
         }, 10);
+    }
+
+    /**
+     * Add file to table (real-time)
+     * @param {Object} file - File object with name, size, owner, upload_date
+     */
+    addFileToTable(file) {
+        if (!this.filesTable) return;
+
+        // Remove "No files uploaded yet" row if it exists
+        const noFilesRow = this.filesTable.querySelector('tr td[colspan="5"]');
+        if (noFilesRow) {
+            noFilesRow.closest('tr').remove();
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-notion-hover transition-colors duration-150';
+        tr.setAttribute('data-filename', file.name);
+
+        tr.innerHTML = `
+            <td class="px-4 py-3 font-medium text-notion-text">
+                <span class="block max-w-[220px] truncate filename" title="${uiHelpers.escapeHtml(file.name)}">${uiHelpers.escapeHtml(file.name)}</span>
+            </td>
+            <td class="px-4 py-3 text-notion-text-secondary">${uiHelpers.escapeHtml(file.size || 'Unknown')}</td>
+            <td class="px-4 py-3 text-notion-text-secondary">${uiHelpers.escapeHtml(file.owner || 'Unknown')}</td>
+            <td class="px-4 py-3 text-notion-text-secondary">${uiHelpers.escapeHtml(file.upload_date || 'Just now')}</td>
+            <td class="px-4 py-3">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-2">
+                    <a href="/download/${encodeURIComponent(file.name)}" class="btn-action btn-action-download" 
+                       aria-label="Download ${uiHelpers.escapeHtml(file.name)}" title="Download file">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                    </a>
+                    <button type="button" onclick="if(confirm('Delete file?')) deleteFile('${uiHelpers.escapeHtml(file.name)}'); return false;" 
+                            class="btn-action btn-action-delete" 
+                            aria-label="Delete ${uiHelpers.escapeHtml(file.name)}" title="Delete file">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </td>
+        `;
+
+        this.filesTable.insertBefore(tr, this.filesTable.firstChild);
+        setTimeout(uiHelpers.reinitializeLucideIcons, 10);
+    }
+
+    /**
+     * Remove file from table (real-time)
+     * @param {string} filename - Name of the file to remove
+     */
+    removeFileFromTable(filename) {
+        if (!this.filesTable) return;
+
+        const fileRow = this.filesTable.querySelector(`tr[data-filename="${CSS.escape(filename)}"]`);
+        if (fileRow) {
+            fileRow.remove();
+        }
+
+        // If no files left, add the "No files uploaded yet" row
+        const remainingRows = this.filesTable.querySelectorAll('tr');
+        if (remainingRows.length === 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td colspan="5" class="px-4 py-8 text-center text-notion-text-secondary">
+                    <div class="text-lg mb-2">No files uploaded yet</div>
+                    <div class="text-sm">Files will appear here once uploaded</div>
+                </td>
+            `;
+            this.filesTable.appendChild(tr);
+        }
     }
 }
 

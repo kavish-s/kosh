@@ -160,16 +160,43 @@ class UserManager {
      * Open add user modal
      */
     openAddModal() {
+        const allAttributes = window.allAttributes || [];
+
+        let buttons = '';
+        allAttributes.forEach(attr => {
+            buttons += `
+                <button type='button' class='attr-btn px-2 py-1 text-xs rounded-full mr-2 mb-2 
+                    bg-notion-card text-notion-text-secondary' 
+                    data-attr='${uiHelpers.escapeHtml(attr)}' aria-pressed='false'>
+                    ${uiHelpers.escapeHtml(attr)}
+                </button>
+            `;
+        });
+
         modalManager.show(`
             <h3 class='text-lg font-bold mb-2'>Add User</h3>
             <form id='add-user-form'>
                 <input type='text' name='user' placeholder='Username' required 
                     class='w-full mb-3 px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text'>
-                <input type='text' name='attrs' placeholder='Comma separated attributes' required 
-                    class='w-full mb-3 px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text'>
+                <div class='mb-3'>
+                    <label class='block text-sm font-medium text-notion-text mb-2'>Attributes</label>
+                    <div id='attr-btn-group'>${buttons}</div>
+                </div>
                 <button type='submit' class='btn-primary px-4 py-2 rounded text-white'>Add</button>
             </form>
         `);
+
+        // Setup attribute button toggles
+        document.querySelectorAll('.attr-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                this.classList.toggle('bg-notion-accent/20');
+                this.classList.toggle('text-notion-accent');
+                this.classList.toggle('bg-notion-card');
+                this.classList.toggle('text-notion-text-secondary');
+                this.setAttribute('aria-pressed', 
+                    this.classList.contains('bg-notion-accent/20') ? 'true' : 'false');
+            });
+        });
 
         document.getElementById('add-user-form').onsubmit = async (e) => {
             e.preventDefault();
@@ -183,7 +210,8 @@ class UserManager {
      */
     async add(form) {
         const user = form.user.value.trim();
-        const attrs = form.attrs.value.trim();
+        const selectedAttrs = Array.from(document.querySelectorAll('.attr-btn.bg-notion-accent\\/20'))
+            .map(btn => btn.getAttribute('data-attr'));
 
         if (!user) {
             toastManager.show('Username required', 'error');
@@ -198,7 +226,7 @@ class UserManager {
                     'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ user, attributes: attrs })
+                body: JSON.stringify({ user, attributes: selectedAttrs.join(', ') })
             });
 
             if (!response.ok) {
