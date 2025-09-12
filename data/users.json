@@ -49,5 +49,13 @@
       "year4"
     ],
     "password": "pass"
+  },
+  "dharmin": {
+    "attributes": [
+      "student",
+      "year4",
+      "batch1"
+    ],
+    "password": "pass"
   }
 }
