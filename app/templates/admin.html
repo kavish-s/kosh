@@ -226,7 +226,7 @@
                                             <input type="checkbox" name="policy_bulk" value="{{ file }}" aria-label="Select policy for {{ file }}" class="rounded border-notion-border bg-notion-input">
                                         </td>
                                         <td class="px-4 py-3 font-medium text-notion-text">
-                                            <span class="block max-w-[220px] truncate filename" title="{{ file.name }}">{{ file.name }}</span>
+                                            <span class="block max-w-[220px] truncate filename" title="{{ file }}">{{ file }}</span>
                                         </td>
                                         <td class="px-4 py-3">
                                             {% if policy_obj.policy %}
@@ -281,7 +281,7 @@
                         </div>
                     </div>
                     <div class="p-6 flex-1 overflow-x-auto">
-                        <table class="min-w-full divide-y divide-notion-border">
+                        <table class="min-w-full divide-y divide-notion-border" id="files-table">
                             <thead>
                                 <tr>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">File Name</th>
@@ -291,7 +291,7 @@
                                     <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y divide-notion-border">
+                            <tbody class="divide-y divide-notion-border" id="files-tbody">
                                 {% for file in all_files %}
                                 <tr class="hover:bg-notion-hover transition-colors duration-150">
                                     <td class="px-4 py-3 font-medium text-notion-text">

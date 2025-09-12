@@ -115,6 +115,8 @@ class AdminDashboard {
         window.addPolicyToTable = (file, policy) => realTimeManager.addPolicyToTable(file, policy);
         window.updatePolicyInTable = (file, policy) => realTimeManager.updatePolicyInTable(file, policy);
         window.removePolicyFromTable = (file) => realTimeManager.removePolicyFromTable(file);
+        window.addFileToTable = (file) => realTimeManager.addFileToTable(file);
+        window.removeFileFromTable = (filename) => realTimeManager.removeFileFromTable(filename);
         window.addAuditLogToTable = (entry) => realTimeManager.addAuditLogToTable(entry);
         window.addAttributeToUI = (attr) => realTimeManager.addAttributeToUI(attr);
         window.removeAttributeFromUI = (attr) => realTimeManager.removeAttributeFromUI(attr);

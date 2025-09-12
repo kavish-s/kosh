@@ -431,6 +431,28 @@ def upload():
         'uploader': session['user_id'],
         'files': uploaded_files
     }, room='dashboard_updates')
+    
+    # Emit file updates to admin dashboard
+    for filename in uploaded_files:
+        # Get file stats for admin view
+        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        file_stats = {
+            'name': filename,
+            'owner': session['user_id'],
+            'upload_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }
+        try:
+            if os.path.exists(file_path):
+                file_stats['size'] = f"{os.path.getsize(file_path)} bytes"
+            else:
+                file_stats['size'] = "Unknown"
+        except:
+            file_stats['size'] = "Unknown"
+            
+        socketio.emit('file_uploaded', {
+            'file': file_stats,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        }, room='admin_updates')
 
     return jsonify(success=True, filenames=uploaded_files)
 
@@ -783,7 +805,7 @@ def admin_add_policy():
         # Emit real-time update to admin dashboard
         socketio.emit('policy_added', {
             'file': file,
-            'policy': policy,
+            'policy': {"policy": policy, "key": None},
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }, room='admin_updates')
         return redirect(url_for('admin_dashboard'))
@@ -821,7 +843,7 @@ def admin_edit_policy(file):
             # Emit real-time update to admin dashboard
             socketio.emit('policy_updated', {
                 'file': file,
-                'policy': policy,
+                'policy': {"policy": policy, "key": None},
                 'old_policy': old_policy,
                 'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             }, room='admin_updates')
@@ -846,7 +868,14 @@ def admin_delete_policy(file):
     policies.pop(file, None)
     with open(POLICIES_FILE, 'w') as f:
         json.dump(policies, f, indent=2)
-        log_audit(session.get('user_id'), 'delete_policy', details=f'Deleted policy for file {file}', ip=request.remote_addr)
+    log_audit(session.get('user_id'), 'delete_policy', details=f'Deleted policy for file {file}', ip=request.remote_addr)
+    
+    # Emit real-time update to admin dashboard
+    socketio.emit('policy_deleted', {
+        'file': file,
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    }, room='admin_updates')
+    
     return redirect(url_for('admin_dashboard'))
 
 
@@ -975,6 +1004,13 @@ def delete_file():
         'deleter': user_id,
         'filename': filename
     }, room='dashboard_updates')
+    
+    # Emit file deletion to admin dashboard
+    socketio.emit('file_deleted', {
+        'filename': filename,
+        'deleter': user_id,
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    }, room='admin_updates')
 
     return jsonify(success=True)
 
@@ -1017,6 +1053,13 @@ def admin_delete_file():
         'deleter': session.get('user_id'),
         'filename': filename
     }, room='dashboard_updates')
+    
+    # Emit file deletion to admin dashboard
+    socketio.emit('file_deleted', {
+        'filename': filename,
+        'deleter': session.get('user_id'),
+        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    }, room='admin_updates')
 
     return jsonify(success=True)
 
