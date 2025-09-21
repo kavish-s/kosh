@@ -17,6 +17,7 @@ from .crypto import aes, abe_simulator as abe
 import os, json
 from datetime import datetime
 from io import BytesIO
+from werkzeug.security import generate_password_hash, check_password_hash
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
@@ -176,8 +177,8 @@ if not os.path.exists(USERS_FILE):
     with open(USERS_FILE, "w") as f:
         json.dump(
             {
-                "user1": {"attributes": ["student", "year3"], "password": "pass"},
-                "user2": {"attributes": ["faculty"], "password": "pass"},
+                "user1": {"attributes": ["student", "year3"], "password": generate_password_hash("pass")},
+                "user2": {"attributes": ["faculty"], "password": generate_password_hash("pass")},
             },
             f,
         )
@@ -216,10 +217,10 @@ def login():
 
     # Verify user exists
     if user_id in users:
-        expected = (
+        expected_hash = (
             users[user_id].get("password") if isinstance(users[user_id], dict) else None
         )
-        if expected == password:
+        if expected_hash and check_password_hash(expected_hash, password):
             # Set session for admin or regular users
             session["user_id"] = user_id
             # Log login event
@@ -338,7 +339,7 @@ def change_password():
         return redirect(url_for("dashboard"))
 
     if user_id in users:
-        users[user_id]["password"] = new_password
+        users[user_id]["password"] = generate_password_hash(new_password)
         try:
             with open(USERS_FILE, "w") as f:
                 json.dump(users, f, indent=2)
@@ -591,7 +592,7 @@ def download(filename):
 
     # Prevent directory traversal attacks
     filename = os.path.basename(filename)
-    if not filename or filename in [".", ".."] or "/" in filename or "\" in filename:
+    if not filename or filename in [".", ".."] or "/" in filename or "\\" in filename:
         return "Invalid filename", 400
 
     # Ensure filename has .enc extension for security
@@ -823,7 +824,7 @@ def admin_add_user():
             users = {}
 
         # Create user with default password 'pass' and the specified attributes
-        users[user_id] = {"attributes": attributes, "password": "pass"}
+        users[user_id] = {"attributes": attributes, "password": generate_password_hash("pass")}
         try:
             with open(USERS_FILE, "w") as f:
                 json.dump(users, f, indent=2)
@@ -888,7 +889,7 @@ def admin_edit_user(user_id):
             users[user_id] = {"attributes": attributes, "password": existing_password}
         else:
             # User exists as array (legacy format), convert to new format with default password
-            users[user_id] = {"attributes": attributes, "password": "pass"}
+            users[user_id] = {"attributes": attributes, "password": generate_password_hash("pass")}
 
         try:
             with open(USERS_FILE, "w") as f:
@@ -1435,7 +1436,7 @@ def handle_join_dashboard():
 
 
 @socketio.on("leave_dashboard")
-def handle_leave_.dashboard():
+def handle_leave_dashboard():
     user_id = session.get("user_id")
     if user_id:
         leave_room("dashboard_updates")
