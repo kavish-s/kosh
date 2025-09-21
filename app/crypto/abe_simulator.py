@@ -1,13 +1,13 @@
-# crypto/abe_simulator.py
-
 import json
 
 import os, sys
+
 # Always resolve data path from project root
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # crypto directory
-APP_DIR = os.path.dirname(BASE_DIR)  # app directory  
+APP_DIR = os.path.dirname(BASE_DIR)  # app directory
 PROJECT_ROOT = os.path.dirname(APP_DIR)  # project root
-USERS_FILE = os.path.join(PROJECT_ROOT, 'data', 'users.json')
+USERS_FILE = os.path.join(PROJECT_ROOT, "data", "users.json")
+
 
 def get_user_attributes(user_id):
     with open(USERS_FILE) as f:
@@ -18,7 +18,7 @@ def get_user_attributes(user_id):
     user_entry = users.get(user_id, [])
     # Extract attributes depending on stored shape
     if isinstance(user_entry, dict):
-        attrs = user_entry.get('attributes', [])
+        attrs = user_entry.get("attributes", [])
     else:
         attrs = user_entry
 
@@ -27,8 +27,9 @@ def get_user_attributes(user_id):
     for attr in attrs:
         if not isinstance(attr, str):
             continue
-        flat_attrs.extend([a.strip() for a in attr.split(',') if a.strip()])
+        flat_attrs.extend([a.strip() for a in attr.split(",") if a.strip()])
     return flat_attrs
+
 
 def check_access(user_id, policy):
     user_attrs = get_user_attributes(user_id)
@@ -36,7 +37,7 @@ def check_access(user_id, policy):
     if isinstance(policy, list):
         required = policy
     elif isinstance(policy, str):
-        required = [p.strip() for p in policy.split(',')]
+        required = [p.strip() for p in policy.split(",")]
     else:
         return False
 

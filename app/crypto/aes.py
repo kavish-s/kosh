@@ -8,22 +8,24 @@ from cryptography.exceptions import InvalidTag
 
 # Get the project root directory (two levels up from this file)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # crypto directory
-APP_DIR = os.path.dirname(BASE_DIR)  # app directory  
+APP_DIR = os.path.dirname(BASE_DIR)  # app directory
 PROJECT_ROOT = os.path.dirname(APP_DIR)  # project root
-DATA_PATH = os.path.join(PROJECT_ROOT, 'data')
+DATA_PATH = os.path.join(PROJECT_ROOT, "data")
 os.makedirs(DATA_PATH, exist_ok=True)
-AES_KEY_PATH = os.path.join(DATA_PATH, 'aes_encryption.key')
-HMAC_KEY_PATH = os.path.join(DATA_PATH, 'aes_hmac.key')
+AES_KEY_PATH = os.path.join(DATA_PATH, "aes_encryption.key")
+HMAC_KEY_PATH = os.path.join(DATA_PATH, "aes_hmac.key")
+
 
 def load_or_generate_key(path):
     if os.path.exists(path):
-        with open(path, 'rb') as f:
+        with open(path, "rb") as f:
             return f.read()
     else:
         key = os.urandom(32)
-        with open(path, 'wb') as f:
+        with open(path, "wb") as f:
             f.write(key)
         return key
+
 
 aes_key = load_or_generate_key(AES_KEY_PATH)
 hmac_key = load_or_generate_key(HMAC_KEY_PATH)
@@ -32,6 +34,7 @@ backend = default_backend()
 IV_SIZE = 16  # AES block size
 CHUNK_SIZE = 65536  # 64KB
 TAG_SIZE = 32  # HMAC-SHA256 output size
+
 
 def encrypt(in_file, out_file):
     """
@@ -44,7 +47,7 @@ def encrypt(in_file, out_file):
 
     cipher = Cipher(algorithms.AES(aes_key), modes.CTR(iv), backend=backend)
     encryptor = cipher.encryptor()
-    
+
     h = hmac.HMAC(hmac_key, hashes.SHA256(), backend=backend)
     h.update(iv)
 
@@ -60,9 +63,10 @@ def encrypt(in_file, out_file):
     if encrypted_chunk:
         h.update(encrypted_chunk)
         out_file.write(encrypted_chunk)
-    
+
     tag = h.finalize()
     out_file.write(tag)
+
 
 def decrypt(in_file, out_file):
     """
@@ -78,12 +82,12 @@ def decrypt(in_file, out_file):
         raise ValueError("Invalid encrypted file: file is too small.")
 
     iv = in_file.read(IV_SIZE)
-    
+
     in_file.seek(total_size - TAG_SIZE)
     tag = in_file.read(TAG_SIZE)
-    
+
     in_file.seek(IV_SIZE)
-    
+
     h = hmac.HMAC(hmac_key, hashes.SHA256(), backend=backend)
     h.update(iv)
 
@@ -105,8 +109,10 @@ def decrypt(in_file, out_file):
     decrypted_chunk = decryptor.finalize()
     if decrypted_chunk:
         out_file.write(decrypted_chunk)
-    
+
     try:
         h.verify(tag)
     except InvalidTag:
-        raise ValueError("HMAC verification failed: file is corrupt or has been tampered with.")
+        raise ValueError(
+            "HMAC verification failed: file is corrupt or has been tampered with."
+        )
