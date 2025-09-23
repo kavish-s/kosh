@@ -1,7 +1,8 @@
 {
   "neel": {
     "attributes": [
-      "batch2",
+      "batch1",
+      "cap",
       "cyber",
       "student",
       "year4"
@@ -11,6 +12,7 @@
   "atharva": {
     "attributes": [
       "batch1",
+      "cap",
       "cyber",
       "student",
       "year4"
