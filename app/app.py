@@ -458,71 +458,85 @@ def upload():
 
 @app.route('/download/<filename>')
 def download(filename):
+    import traceback
+    print(f"[DOWNLOAD] User session: {session.get('user_id')}, filename: {filename}")
     if 'user_id' not in session:
+        print("[DOWNLOAD] No user session, redirecting to home.")
         return redirect(url_for('home'))
-    
+
     user_id = session['user_id']
-    
+
     # Input validation and sanitization
     if not filename:
+        print("[DOWNLOAD] Invalid filename: empty.")
         return "Invalid filename", 400
-    
+
     # Prevent directory traversal attacks
     filename = os.path.basename(filename)
     if not filename or filename in ['.', '..'] or '/' in filename or '\\' in filename:
+        print(f"[DOWNLOAD] Invalid filename after sanitization: {filename}")
         return "Invalid filename", 400
-    
+
     # Ensure filename has .enc extension for security
     if not filename.endswith('.enc'):
+        print(f"[DOWNLOAD] Filename does not end with .enc: {filename}")
         return "Access Denied", 403
-    
+
     try:
-        if user_id == 'admin':
-            pass  # admin can download any file
+        policies = safe_load_json(POLICIES_FILE, {})
+        print(f"[DOWNLOAD] Loaded policies for {filename}: {policies.get(filename)}")
+        policy_obj = policies.get(filename)
+        if not policy_obj:
+            print(f"[DOWNLOAD] No policy found for {filename}")
+            return "Access Denied", 403
+        access_policy = policy_obj.get('policy') if isinstance(policy_obj, dict) else policy_obj
+        sender = policy_obj.get('sender') if isinstance(policy_obj, dict) else None
+        # Owners can always download their own files
+        if sender == user_id:
+            print(f"[DOWNLOAD] User {user_id} is owner of {filename}")
         else:
-            policies = safe_load_json(POLICIES_FILE, {})
-            policy_obj = policies.get(filename)
-            if not policy_obj:
-                return "Access Denied", 403
-            access_policy = policy_obj.get('policy') if isinstance(policy_obj, dict) else policy_obj
-            sender = policy_obj.get('sender') if isinstance(policy_obj, dict) else None
-            # Owners can always download their own files
-            if sender == user_id:
-                pass
+            if isinstance(access_policy, str):
+                required_attrs = [a.strip() for a in access_policy.split(',') if a.strip()]
+            elif isinstance(access_policy, list):
+                required_attrs = access_policy
             else:
-                if isinstance(access_policy, str):
-                    required_attrs = [a.strip() for a in access_policy.split(',') if a.strip()]
-                elif isinstance(access_policy, list):
-                    required_attrs = access_policy
-                else:
-                    required_attrs = []
-                if not abe.check_access(user_id, required_attrs):
-                    return "Access Denied", 403
+                required_attrs = []
+            print(f"[DOWNLOAD] Required attributes for {filename}: {required_attrs}")
+            if not abe.check_access(user_id, required_attrs):
+                print(f"[DOWNLOAD] User {user_id} does not satisfy required attributes for {filename}")
+                return "Access Denied", 403
     except Exception as e:
-        print(f"Error checking access for {filename}: {e}")
+        print(f"[DOWNLOAD] Error checking access for {filename}: {e}")
+        traceback.print_exc()
         return "Access Denied", 403
 
     encrypted_path = os.path.join(UPLOAD_FOLDER, filename)
     decrypted_stream = BytesIO()
-    
+
     try:
         with open(encrypted_path, 'rb') as f_in:
+            print(f"[DOWNLOAD] Decrypting file {encrypted_path}")
             aes.decrypt(f_in, decrypted_stream)
     except FileNotFoundError:
+        print(f"[DOWNLOAD] File not found: {encrypted_path}")
         return "File not found", 404
     except ValueError as e:
         # This will catch HMAC verification errors
-        print(f"Decryption or verification failed for {filename}: {e}")
+        print(f"[DOWNLOAD] Decryption or verification failed for {filename}: {e}")
+        traceback.print_exc()
         return "Access Denied: File is corrupt or has been tampered with.", 403
     except Exception as e:
-        print(f"Unexpected error during decryption for {filename}: {e}")
+        print(f"[DOWNLOAD] Unexpected error during decryption for {filename}: {e}")
+        traceback.print_exc()
         return "System error: Unable to process file", 500
 
     # Log download event
+    print(f"[DOWNLOAD] Logging download event for user {user_id} and file {filename}")
     log_audit(session['user_id'], 'download', details=f'Downloaded {filename}', ip=request.remote_addr)
-    
+
     decrypted_stream.seek(0)
     original_name = filename.replace(".enc", "")
+    print(f"[DOWNLOAD] Sending file {original_name} to user {user_id}")
     return send_file(decrypted_stream, download_name=original_name, as_attachment=True)
 
 @app.route('/logout')
