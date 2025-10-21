@@ -30,7 +30,7 @@ USER_KEYS_DIR = os.path.join(BASE_DIR, "user_keys")
 
 
 app = Flask(__name__, template_folder=TEMPLATES_DIR, static_folder=STATIC_DIR)
-app.secret_key = "kosh-secret-key"
+app.secret_key = "kosh-secret-key-change-in-production"
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -372,93 +372,10 @@ def upload():
         return jsonify(success=False, error="No files selected"), 400
 
     # Validate file types and sizes
-    # Allow more secure file types: documents, images, archives, code, spreadsheets, presentations
     allowed_extensions = {
-        # Documents, spreadsheets, presentations
-        "txt",
-        "pdf",
-        "doc",
-        "docx",
-        "xls",
-        "xlsx",
-        "ppt",
-        "pptx",
-        "csv",
-        "rtf",
-        "odt",
-        "ods",
-        "odp",
-        # Images
-        "jpg",
-        "jpeg",
-        "png",
-        "gif",
-        "bmp",
-        "tiff",
-        "webp",
-        # Archives
-        "zip",
-        "rar",
-        "7z",
-        "tar",
-        "gz",
-        "bz2",
-        # Code and config
-        "py",
-        "js",
-        "json",
-        "xml",
-        "html",
-        "css",
-        "md",
-        "yml",
-        "yaml",
-        "c",
-        "cpp",
-        "h",
-        "hpp",
-        "java",
-        "go",
-        "rb",
-        "php",
-        "sh",
-        "swift",
-        "ts",
-        "rs",
-        "pl",
-        "sql",
-        # Executables and installers
-        "apk",
-        "exe",
-        "dll",
-        "so",
-        "bin",
-        "iso",
-        "dmg",
-        "app",
-        "deb",
-        "rpm",
-        "msi",
-        "bat",
-        "ps1",
-        # Video files
-        "mp4",
-        "mov",
-        "avi",
-        "wmv",
-        "flv",
-        "mkv",
-        "webm",
-        "mpeg",
-        "mpg",
-        "m4v",
-        "3gp",
-        "ts",
-        "vob",
-        "ogv",
-        "mxf",
-        "rm",
-        "swf",
+        'txt', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'csv',
+        'jpg', 'jpeg', 'png', 'gif', 'zip', 'rar', 'py', 'js', 'json',
+        'mp4', 'mov', 'avi', 'mkv'
     }
     max_file_size = 5 * 1024 * 1024 * 1024  # 5GB
 
@@ -1463,4 +1380,4 @@ def handle_leave_admin():
 
 
 if __name__ == "__main__":
-    socketio.run(app, debug=False, port=7130, host="0.0.0.0")
+    socketio.run(app, debug=True, port=7130, host="0.0.0.0")

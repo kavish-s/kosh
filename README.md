@@ -4,6 +4,7 @@
 
 ## 🌟 Table of Contents
 
+- [Quick Setup](#-quick-setup)
 - [Features](#-features)
 - [Project Structure](#-project-structure)
 - [Getting Started](#-getting-started)
@@ -13,6 +14,40 @@
 - [Development](#-development)
 - [Contributing](#-contributing)
 - [License](#-license)
+
+## 🚀 Quick Setup
+
+### Simple Setup for Capstone Project
+
+#### 1. Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+#### 2. Run the Application
+
+```bash
+python3 -m app.app
+```
+
+#### 3. Access the Application
+
+Open your browser: `http://localhost:7130`
+
+**Default Login:**
+- Username: `admin`
+- Password: `pass`
+
+#### 4. That's It!
+
+The application is now running. You can:
+- Upload encrypted files
+- Set access policies based on user attributes
+- Manage users and their attributes
+- View audit logs
+
+**Note:** All files stored in `data/` and `app/uploads/`. Simple JSON-based storage (no database needed). Real-time updates using WebSockets. AES encryption for all files.
 
 ## 🌐 Features
 
