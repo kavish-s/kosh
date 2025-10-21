@@ -17,7 +17,7 @@ def get_user_attributes(user_id):
     # Get user entry; could be a list (legacy) or dict (current)
     user_entry = users.get(user_id, [])
     if isinstance(user_entry, dict):
-        attrs = user_entry.get('attributes', [])
+        attrs = user_entry.get("attributes", [])
     else:
         attrs = user_entry
 
@@ -26,8 +26,9 @@ def get_user_attributes(user_id):
     for attr in attrs:
         if not isinstance(attr, str):
             continue
-        flat_attrs.extend([a.strip() for a in attr.split(',') if a.strip()])
+        flat_attrs.extend([a.strip() for a in attr.split(",") if a.strip()])
     return flat_attrs
+
 
 def check_access(user_id, policy):
     """
@@ -41,7 +42,7 @@ def check_access(user_id, policy):
     if isinstance(policy, list):
         required = policy
     elif isinstance(policy, str):
-        required = [p.strip() for p in policy.split(',')]
+        required = [p.strip() for p in policy.split(",")]
     else:
         return False
 
