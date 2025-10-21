@@ -310,7 +310,7 @@ class PolicyManager {
         }
 
         const policySpans = policy ? policy.split(',').map(attr => 
-            `<span class="inline-flex px-2 py-1 text-xs rounded-full bg-notion-accent/20 text-notion-accent">${attr.trim()}</span>`
+            `<span class="inline-flex px-2 py-1 text-xs rounded-full bg-notion-accent/20 text-notion-accent">${uiHelpers.escapeHtml(attr.trim())}</span>`
         ).join('') : '';
 
         const newRow = document.createElement('tr');

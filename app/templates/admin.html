@@ -293,6 +293,11 @@
                             </thead>
                             <tbody class="divide-y divide-notion-border" id="files-tbody">
                                 {% for file in all_files %}
+                                {% set policy_obj = policies.get(file.name) %}
+                                {% set access_policy = policy_obj.policy if policy_obj and policy_obj.policy is defined else None %}
+                                {% set required_attrs = access_policy.split(',') if access_policy else [] %}
+                                {% set admin_attrs = users['admin']['attributes'] if users['admin'] and users['admin']['attributes'] is defined else [] %}
+                                {% set has_access = required_attrs|length == 0 or (required_attrs|length > 0 and required_attrs|select('in', admin_attrs)|list|length == required_attrs|length) %}
                                 <tr class="hover:bg-notion-hover transition-colors duration-150">
                                     <td class="px-4 py-3 font-medium text-notion-text">
                                         <span class="block max-w-[220px] truncate filename" title="{{ file.name }}">{{ file.name }}</span>
@@ -302,9 +307,15 @@
                                     <td class="px-4 py-3 text-notion-text-secondary">{{ file.upload_date }}</td>
                                     <td class="px-4 py-3">
                                         <div class="flex flex-col sm:flex-row items-start sm:items-center space-y-1 sm:space-y-0 sm:space-x-2">
-                                            <a href="/download/{{ file.name }}" class="btn-action btn-action-download" aria-label="Download {{ file.name }}" title="Download file">
-                                                <i data-lucide="download" class="w-4 h-4"></i>
-                                            </a>
+                                            {% if has_access %}
+                                                <a href="/download/{{ file.name }}" class="btn-action btn-action-download" aria-label="Download {{ file.name }}" title="Download file">
+                                                    <i data-lucide="download" class="w-4 h-4"></i>
+                                                </a>
+                                            {% else %}
+                                                <button type="button" class="btn-action btn-action-download opacity-50 cursor-not-allowed" disabled title="Access not granted">
+                                                    <i data-lucide="lock" class="w-4 h-4"></i>
+                                                </button>
+                                            {% endif %}
                                             <button type="button" onclick="if(confirm('Delete file?')) deleteFile('{{ file.name }}'); return false;" class="btn-action btn-action-delete" aria-label="Delete {{ file.name }}" title="Delete file">
                                                 <i data-lucide="trash-2" class="w-4 h-4"></i>
                                             </button>
