@@ -99,6 +99,12 @@ class RealTimeManager {
             data.users.forEach(user => this.updateUserInTable(user, data.attributes));
         });
 
+        this.socket.on('user_roles_updated', (data) => {
+            console.log('👤 User roles updated:', data);
+            this.updateUserRolesInTable(data.user, data.roles);
+            toastManager.show(`Roles updated for "${data.user}"`, 'info');
+        });
+
         // Policy management events
         this.socket.on('policy_added', (data) => {
             console.log('📄 Policy added:', data);
@@ -198,13 +204,26 @@ class RealTimeManager {
      * Add user to table (real-time)
      * @param {string} user - Username
      * @param {string|Array} attributes - User attributes
+     * @param {Array} roles - User roles
      */
-    addUserToTable(user, attributes) {
+    addUserToTable(user, attributes, roles = []) {
         if (!this.usersTable) return;
 
         const attributesStr = Array.isArray(attributes) ? attributes.join(', ') : attributes;
+        const rolesStr = Array.isArray(roles) ? roles.join(', ') : roles || '';
         const tr = document.createElement('tr');
         tr.className = 'hover:bg-notion-hover transition-colors duration-150';
+
+        let rolesHtml = '';
+        if (roles && roles.length > 0) {
+            rolesHtml = `
+                <div class="flex flex-wrap gap-1">
+                    ${roles.map(role => `<span class="inline-flex px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400">${uiHelpers.escapeHtml(role)}</span>`).join('')}
+                </div>
+            `;
+        } else {
+            rolesHtml = '<span class="text-notion-text-secondary text-xs italic">No roles</span>';
+        }
 
         tr.innerHTML = `
             <td class="px-2 py-3">
@@ -213,12 +232,18 @@ class RealTimeManager {
             </td>
             <td class="px-4 py-3 font-medium text-notion-text">${uiHelpers.escapeHtml(user)}</td>
             <td class="px-4 py-3">${uiHelpers.formatAttributesAsHtml(attributesStr)}</td>
+            <td class="px-4 py-3">${rolesHtml}</td>
             <td class="px-4 py-3">
                 <div class="flex flex-col sm:flex-row items-start space-y-1 sm:space-y-0 sm:space-x-2">
                     <button type="button" class="btn-action btn-action-edit edit-user-link" 
                         data-user='${uiHelpers.escapeHtml(user)}' data-attrs='${uiHelpers.escapeHtml(attributesStr)}' 
                         aria-label="Edit user ${uiHelpers.escapeHtml(user)}" title="Edit user">
                         <i data-lucide="edit-2" class="w-4 h-4"></i>
+                    </button>
+                    <button type="button" class="btn-action btn-action-info manage-roles-link" 
+                        data-user='${uiHelpers.escapeHtml(user)}' data-roles='${uiHelpers.escapeHtml(rolesStr)}'
+                        aria-label="Manage roles for ${uiHelpers.escapeHtml(user)}" title="Manage roles">
+                        <i data-lucide="shield" class="w-4 h-4"></i>
                     </button>
                     <button type="button" class="btn-action btn-action-delete delete-user-link" 
                         data-user='${uiHelpers.escapeHtml(user)}' 
@@ -258,6 +283,48 @@ class RealTimeManager {
                 }
 
                 uiHelpers.refreshTailwindStyles(tr);
+            }
+        }
+    }
+
+    /**
+     * Update user roles in table (real-time)
+     * @param {string} user - Username
+     * @param {Array} roles - User roles
+     */
+    updateUserRolesInTable(user, roles) {
+        if (!this.usersTable) return;
+
+        const inputs = Array.from(this.usersTable.querySelectorAll('input[name="user_bulk"]'));
+        const match = inputs.find(i => i.value === user);
+        if (match) {
+            const tr = match.closest('tr');
+            if (tr) {
+                const rolesCell = tr.children[3]; // Roles are in the 4th column (index 3)
+                if (rolesCell) {
+                    const rolesStr = Array.isArray(roles) ? roles.join(', ') : roles || '';
+                    let rolesHtml = '';
+                    
+                    if (roles && roles.length > 0) {
+                        rolesHtml = `
+                            <div class="flex flex-wrap gap-1">
+                                ${roles.map(role => `<span class="inline-flex px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400">${uiHelpers.escapeHtml(role)}</span>`).join('')}
+                            </div>
+                        `;
+                    } else {
+                        rolesHtml = '<span class="text-notion-text-secondary text-xs italic">No roles</span>';
+                    }
+                    
+                    rolesCell.innerHTML = rolesHtml;
+
+                    // Update the manage-roles-link button
+                    const manageRolesBtn = tr.querySelector('.manage-roles-link');
+                    if (manageRolesBtn) {
+                        manageRolesBtn.setAttribute('data-roles', rolesStr);
+                    }
+
+                    uiHelpers.refreshTailwindStyles(tr);
+                }
             }
         }
     }

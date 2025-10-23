@@ -1,28 +1,21 @@
 import json
-
-import os, sys
-
-# Always resolve data path from project root
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # crypto directory
-APP_DIR = os.path.dirname(BASE_DIR)  # app directory
-PROJECT_ROOT = os.path.dirname(APP_DIR)  # project root
-USERS_FILE = os.path.join(PROJECT_ROOT, "data", "users.json")
-
+from .. import config
 
 def get_user_attributes(user_id):
-    with open(USERS_FILE) as f:
+    """
+    Retrieve and normalize the list of attributes for a given user.
+    Supports legacy and current user data formats.
+    """
+    with open(config.USERS_FILE) as f:
         users = json.load(f)
-    # Support multiple user data shapes:
-    # 1) { "alice": ["student","year3"] }  (legacy)
-    # 2) { "alice": { "attributes": ["student","year3"], "password": "..." } }
+    # Get user entry; could be a list (legacy) or dict (current)
     user_entry = users.get(user_id, [])
-    # Extract attributes depending on stored shape
     if isinstance(user_entry, dict):
         attrs = user_entry.get("attributes", [])
     else:
         attrs = user_entry
 
-    # Flatten attributes and split any comma-separated values
+    # Flatten attributes and handle comma-separated values
     flat_attrs = []
     for attr in attrs:
         if not isinstance(attr, str):
@@ -32,8 +25,14 @@ def get_user_attributes(user_id):
 
 
 def check_access(user_id, policy):
+    """
+    Check if a user satisfies all attributes required by a policy.
+    Policy can be a list of attributes or a comma-separated string.
+    Returns True if user has all required attributes, else False.
+    """
     user_attrs = get_user_attributes(user_id)
 
+    # Normalize policy to a list of required attributes
     if isinstance(policy, list):
         required = policy
     elif isinstance(policy, str):
@@ -41,4 +40,5 @@ def check_access(user_id, policy):
     else:
         return False
 
+    # Check if all required attributes are present in user's attributes
     return all(attr in user_attrs for attr in required)

@@ -80,6 +80,7 @@ class AdminDashboard {
         window.openUserModal = () => userManager.openAddModal();
         window.openEditUserModal = (user, attrs) => userManager.openEditModal(user, attrs);
         window.deleteUser = (user) => userManager.delete(user);
+        window.openManageRolesModal = (user, roles) => userManager.openManageRolesModal(user, roles);
 
         // Policy management functions
         window.filterPolicies = () => policyManager.filter();

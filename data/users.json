@@ -1,21 +1,25 @@
 {
   "neel": {
     "attributes": [
-      "batch2",
+      "batch1",
+      "cap",
       "cyber",
       "student",
       "year4"
     ],
-    "password": "scrypt:32768:8:1$S5DOffkNjHLCG16z$75486340415f06271fe5811928599accc61b49c9f6644c8643fd539f3550bb0e3caf4e5c6528c7545a11b8af551858e1abb49bf72d085b079204070ed7db9c93"
+    "password": "scrypt:32768:8:1$S5DOffkNjHLCG16z$75486340415f06271fe5811928599accc61b49c9f6644c8643fd539f3550bb0e3caf4e5c6528c7545a11b8af551858e1abb49bf72d085b079204070ed7db9c93",
+    "roles": []
   },
   "atharva": {
     "attributes": [
       "batch1",
+      "cap",
       "cyber",
       "student",
       "year4"
     ],
-    "password": "scrypt:32768:8:1$OM1i3kZKYPHQy80s$a7e09d33b3aa0b3c33825534a975d9e72a7a19a53cb062900787b1cf368bfd9986d9ffb7e16d91a35094af04763a713e3a05d0cafdf05751715e994f3cf4de5c"
+    "password": "scrypt:32768:8:1$OM1i3kZKYPHQy80s$a7e09d33b3aa0b3c33825534a975d9e72a7a19a53cb062900787b1cf368bfd9986d9ffb7e16d91a35094af04763a713e3a05d0cafdf05751715e994f3cf4de5c",
+    "roles": []
   },
   "kavish": {
     "attributes": [
@@ -24,13 +28,17 @@
       "student",
       "year4"
     ],
-    "password": "scrypt:32768:8:1$ryDPEXHD6f3hTy3W$a23a79290a6ea4037e7606ec960b9571db0a0a3bd9f3347f5626219245e80bb447315e8580aa8d4253df0a88134f854999ad4678f07907c1cbf71511a7f8609e"
+    "password": "scrypt:32768:8:1$ryDPEXHD6f3hTy3W$a23a79290a6ea4037e7606ec960b9571db0a0a3bd9f3347f5626219245e80bb447315e8580aa8d4253df0a88134f854999ad4678f07907c1cbf71511a7f8609e",
+    "roles": []
   },
   "admin": {
     "attributes": [
       "admin"
     ],
-    "password": "scrypt:32768:8:1$K6X0n81CWkAmpkUs$31b89e8e9bea9f128d814956ee96e49805842aa855799607bdc563f7e0aba37ca7ca929f845c2324f0ff6096138558fff0e7e06c1ae7aad08b42c5f19f7c21bd"
+    "password": "scrypt:32768:8:1$K6X0n81CWkAmpkUs$31b89e8e9bea9f128d814956ee96e49805842aa855799607bdc563f7e0aba37ca7ca929f845c2324f0ff6096138558fff0e7e06c1ae7aad08b42c5f19f7c21bd",
+    "roles": [
+      "admin"
+    ]
   },
   "das": {
     "attributes": [
@@ -39,7 +47,8 @@
       "student",
       "year4"
     ],
-    "password": "scrypt:32768:8:1$BqHhIaL4Ziyx4wuI$c12a269e87ac15086a3d9bf011fb6ddfce05921b58736968a6738d8181a2a535a494d08631c55790ace85afac95b33f6309486f147c95e4a682962ac96833b45"
+    "password": "scrypt:32768:8:1$BqHhIaL4Ziyx4wuI$c12a269e87ac15086a3d9bf011fb6ddfce05921b58736968a6738d8181a2a535a494d08631c55790ace85afac95b33f6309486f147c95e4a682962ac96833b45",
+    "roles": []
   },
   "kale": {
     "attributes": [
@@ -48,7 +57,8 @@
       "student",
       "year4"
     ],
-    "password": "scrypt:32768:8:1$5Xwb0okxCT9Jragr$3d537abd45c8ef6010ebabb8e7fac1e71bcfa651a5c354eab1b0209dee379f2d1d3aa22d6966d542b5df48ee60768cba12892765d1c98ec71094ada56699d723"
+    "password": "scrypt:32768:8:1$5Xwb0okxCT9Jragr$3d537abd45c8ef6010ebabb8e7fac1e71bcfa651a5c354eab1b0209dee379f2d1d3aa22d6966d542b5df48ee60768cba12892765d1c98ec71094ada56699d723",
+    "roles": []
   },
   "dharmin": {
     "attributes": [
@@ -56,6 +66,7 @@
       "year4",
       "batch1"
     ],
-    "password": "scrypt:32768:8:1$SXEub9Q6H7Xx6ibl$a695046c6b33c4f9b61c439e525efec0b9ad97cbe6695633099bdc72b92e784bc6a3b2e7678b4db8eb48552b2c139fa453008c4b941e9b8d029f4235f5ca7616"
+    "password": "scrypt:32768:8:1$SXEub9Q6H7Xx6ibl$a695046c6b33c4f9b61c439e525efec0b9ad97cbe6695633099bdc72b92e784bc6a3b2e7678b4db8eb48552b2c139fa453008c4b941e9b8d029f4235f5ca7616",
+    "roles": []
   }
 }

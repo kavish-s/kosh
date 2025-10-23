@@ -35,6 +35,11 @@ class AdminLinks {
             link.removeEventListener('click', this.handleUserDelete);
             link.addEventListener('click', this.handleUserDelete);
         });
+
+        document.querySelectorAll('.manage-roles-link').forEach(link => {
+            link.removeEventListener('click', this.handleManageRoles);
+            link.addEventListener('click', this.handleManageRoles);
+        });
     }
 
     /**
@@ -82,6 +87,19 @@ class AdminLinks {
         const user = this.getAttribute('data-user');
         if (user) {
             userManager.delete(user);
+        }
+    }
+
+    /**
+     * Handle manage roles link click
+     * @param {Event} e - Click event
+     */
+    handleManageRoles(e) {
+        e.preventDefault();
+        const user = this.getAttribute('data-user');
+        const roles = this.getAttribute('data-roles') || '';
+        if (user) {
+            userManager.openManageRolesModal(user, roles);
         }
     }
 
