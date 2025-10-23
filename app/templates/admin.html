@@ -362,7 +362,16 @@
         <div class="mt-12 flex flex-col gap-8">
             <!-- Audit Logs -->
             <div class="bg-notion-card border border-notion-border rounded-xl notion-shadow p-6">
-                <h4 class="text-lg font-semibold text-notion-text font-title mb-2">Audit Logs</h4>
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h4 class="text-lg font-semibold text-notion-text font-title mb-1">Audit Logs</h4>
+                        <p class="text-xs text-notion-text-secondary">Logs are automatically deleted after 60 days</p>
+                    </div>
+                    <button onclick="downloadAuditLogs()" class="btn-primary px-4 py-2 rounded-lg text-white text-sm font-medium flex items-center space-x-2" aria-label="Download Audit Logs">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        <span>Download Logs</span>
+                    </button>
+                </div>
                 <div class="flex flex-wrap gap-4 items-center mb-4">
                     <label class="text-sm text-notion-text-secondary">From:
                         <input type="date" id="audit-from" class="ml-2 px-2 py-1 rounded border border-notion-border bg-notion-input text-notion-text" onchange="filterAuditLogs()">

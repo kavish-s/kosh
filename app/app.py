@@ -14,192 +14,94 @@ import socket
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from .crypto import aes, abe_simulator as abe
-import os, json
-from datetime import datetime
+import os
+import json
+from datetime import datetime, timedelta
 from io import BytesIO
 from werkzeug.security import generate_password_hash, check_password_hash
-
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
-STATIC_DIR = os.path.join(BASE_DIR, "static")
-UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
-DATA_DIR = os.path.join(
-    os.path.dirname(BASE_DIR), "data"
-)  # Go up one level to project root
-USER_KEYS_DIR = os.path.join(BASE_DIR, "user_keys")
+import threading
+import time
+from . import config
+from . import utils
 
 
-app = Flask(__name__, template_folder=TEMPLATES_DIR, static_folder=STATIC_DIR)
-app.secret_key = "kosh-secret-key-change-in-production"
+# Initialize Flask app
+app = Flask(__name__, template_folder=config.TEMPLATES_DIR, static_folder=config.STATIC_DIR)
+app.secret_key = config.SECRET_KEY
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(DATA_DIR, exist_ok=True)
-os.makedirs(USER_KEYS_DIR, exist_ok=True)
+
+# Ensure required directories exist
+config.ensure_directories()
+
+# Initialize data files with defaults
+utils.initialize_data_files()
+
+# Register blueprints
 app.register_blueprint(attribute_bp)
 
-USERS_FILE = os.path.join(DATA_DIR, "users.json")
 
-POLICIES_FILE = os.path.join(DATA_DIR, "policies.json")
-AUDIT_LOG_FILE = os.path.join(DATA_DIR, "audit_logs.jsonl")
-
-
-def safe_load_json(file_path, default_value=None):
-    """Safely load JSON from a file, handling empty files and JSON decode errors."""
-    try:
-        with open(file_path, "r") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, FileNotFoundError):
-        # Initialize with default value if file is corrupted or missing
-        if default_value is None:
-            default_value = {}
-        with open(file_path, "w") as f:
-            json.dump(default_value, f)
-        return default_value
-
-
-def has_role(user_id, role):
-    """Check if a user has a specific role"""
-    try:
-        with open(USERS_FILE) as f:
-            users = json.load(f)
-        user_data = users.get(user_id)
-        if isinstance(user_data, dict):
-            roles = user_data.get("roles", [])
-            return role in roles or "admin" in roles
-        return False
-    except Exception:
-        return False
-
-
-def log_audit(user, action, details=None, ip=None):
-    """Log audit events with proper error handling"""
-    try:
-        entry = {
-            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "user": str(user) if user else "unknown",
-            "action": str(action) if action else "unknown",
-            "details": str(details) if details else "",
-            "ip": str(ip) if ip else "",
-        }
-
-        with open(AUDIT_LOG_FILE, "a") as f:
-            f.write(json.dumps(entry) + "\n")
-
-        # Emit real-time audit log update to admin dashboard
-        socketio.emit("audit_log_added", entry, room="admin_updates")
-
-    except Exception as e:
-        # Log to console if audit logging fails
-        print(f"Audit logging failed: {e}")
-
-
-def get_user_files(user_id):
-    """Get list of files accessible to a user"""
-    policies = safe_load_json(POLICIES_FILE, {})
-    user_files = []
-    is_admin = user_id == "admin"
-
-    if is_admin:
-        # Admin sees all files
-        for fname, policy in policies.items():
-            if isinstance(policy, dict):
-                sender = policy.get("sender")
-            else:
-                sender = None
-            user_files.append(
-                {
-                    "filename": fname,
-                    "sender": sender,
-                    "is_owner": True,  # Admin can delete any file
-                }
-            )
-    else:
-        for fname, policy in policies.items():
-            if isinstance(policy, dict):
-                access_policy = policy.get("policy")
-                sender = policy.get("sender")
-            else:
-                access_policy = policy
-                sender = None
-
-            # Check if user is the owner
-            is_owner = sender == user_id
-
-            # If user is owner, they can always access their file
-            has_access = is_owner
-
-            # If not owner, check access policy
-            if not has_access:
-                # Normalize access_policy into a list of attributes
-                if isinstance(access_policy, str):
-                    required_attrs = [
-                        a.strip() for a in access_policy.split(",") if a.strip()
-                    ]
-                elif isinstance(access_policy, list):
-                    required_attrs = access_policy
-                else:
-                    required_attrs = []
-
-                try:
-                    has_access = abe.check_access(user_id, required_attrs)
-                except Exception:
-                    has_access = False
-
-            if has_access:
-                user_files.append(
-                    {"filename": fname, "sender": sender, "is_owner": is_owner}
-                )
-
-    return user_files
-
-
-def parse_and_validate_attrs(raw):
-    """Normalize raw attributes input into a deduplicated list and validate format.
-
-    Accepts a list or comma-separated string. Returns (attrs_list, error_message).
-    Valid attribute tokens match /^[A-Za-z0-9_-]+$/.
+def cleanup_old_audit_logs():
     """
-    if raw is None:
-        return [], None
-    if isinstance(raw, list):
-        tokens = [str(x).strip() for x in raw if str(x).strip()]
-    elif isinstance(raw, str):
-        tokens = [t.strip() for t in raw.split(",") if t.strip()]
-    else:
-        # unsupported type
-        return None, "Invalid attributes format"
+    Remove audit log entries older than retention period.
+    This function runs periodically to maintain compliance with data retention policies.
+    """
+    try:
+        if not os.path.exists(config.config.AUDIT_LOG_FILE):
+            return
+        
+        cutoff_date = datetime.now() - timedelta(days=config.config.AUDIT_LOG_RETENTION_DAYS)
+        temp_file = config.config.AUDIT_LOG_FILE + ".tmp"
+        deleted_count = 0
+        kept_count = 0
+        
+        with open(config.AUDIT_LOG_FILE, "r") as f_in, open(temp_file, "w") as f_out:
+            for line in f_in:
+                try:
+                    entry = json.loads(line)
+                    entry_time = datetime.strptime(entry.get("time", ""), "%Y-%m-%d %H:%M:%S")
+                    
+                    if entry_time >= cutoff_date:
+                        f_out.write(line)
+                        kept_count += 1
+                    else:
+                        deleted_count += 1
+                except (json.JSONDecodeError, ValueError, KeyError):
+                    # Keep malformed entries for investigation
+                    f_out.write(line)
+                    kept_count += 1
+        
+        # Replace original file with cleaned version
+        os.replace(temp_file, config.config.AUDIT_LOG_FILE)
+        
+        if deleted_count > 0:
+            print(f"[AUDIT CLEANUP] Deleted {deleted_count} old log entries, kept {kept_count} entries")
+            # Log the cleanup action itself
+            utils.utils.log_audit(
+                "system",
+                "audit_cleanup",
+                details=f"Deleted {deleted_count} audit entries older than {config.config.AUDIT_LOG_RETENTION_DAYS} days",
+                ip="127.0.0.1",
+                socketio=socketio
+            )
+    except Exception as e:
+        print(f"[AUDIT CLEANUP] Error during cleanup: {e}")
 
-    # validate tokens
-    import re
 
-    pat = re.compile(r"^[A-Za-z0-9_-]+$")
-    cleaned = []
-    seen = set()
-    for t in tokens:
-        if not pat.match(t):
-            return None, f'Invalid attribute: "{t}"'
-        if t in seen:
-            continue
-        seen.add(t)
-        cleaned.append(t)
-    return cleaned, None
-
-
-# Initial dummy data if not exists
-if not os.path.exists(USERS_FILE):
-    with open(USERS_FILE, "w") as f:
-        json.dump(
-            {
-                "user1": {"attributes": ["student", "year3"], "password": generate_password_hash("pass")},
-                "user2": {"attributes": ["faculty"], "password": generate_password_hash("pass")},
-            },
-            f,
-        )
-
-if not os.path.exists(POLICIES_FILE):
-    with open(POLICIES_FILE, "w") as f:
-        json.dump({}, f)
+def schedule_audit_cleanup():
+    """
+    Background thread to periodically clean up old audit logs.
+    Runs every 24 hours.
+    """
+    while True:
+        try:
+            cleanup_old_audit_logs()
+            # Sleep for 24 hours
+            time.sleep(86400)
+        except Exception as e:
+            print(f"[AUDIT CLEANUP] Scheduler error: {e}")
+            # Sleep for 1 hour before retrying on error
+            time.sleep(3600)
 
 
 @app.route("/")
@@ -224,7 +126,7 @@ def login():
         return "Username cannot be empty", 400
 
     try:
-        with open(USERS_FILE) as f:
+        with open(config.USERS_FILE) as f:
             users = json.load(f)
     except (json.JSONDecodeError, FileNotFoundError):
         return "System error: Unable to load user data", 500
@@ -238,21 +140,21 @@ def login():
             # Set session for admin or regular users
             session["user_id"] = user_id
             # Log login event
-            log_audit(
-                user_id, "login", details="Login successful", ip=request.remote_addr
+            utils.log_audit(
+                user_id, "login", details="Login successful", ip=request.remote_addr, socketio=socketio
             )
             if user_id == "admin":
                 return redirect(url_for("admin_dashboard"))
             return redirect(url_for("dashboard"))
         else:
-            log_audit(
+            utils.log_audit(
                 user_id,
                 "login_failed",
                 details="Invalid password",
                 ip=request.remote_addr,
             )
             return "Invalid password", 401
-    log_audit(user_id, "login_failed", details="Invalid user", ip=request.remote_addr)
+    utils.log_audit(user_id, "login_failed", details="Invalid user", ip=request.remote_addr)
     return "Invalid user", 401
 
 
@@ -263,7 +165,8 @@ def dashboard():
         return redirect(url_for("home"))
 
     # Get user files using the helper function
-    user_files = get_user_files(user_id)
+    policies = utils.safe_load_json(config.POLICIES_FILE, {})
+    user_files = utils.get_user_files(user_id, policies, abe)
 
     # Get local IP address for share info
     try:
@@ -275,11 +178,11 @@ def dashboard():
         server_ip = "localhost"
 
     # Load all attributes for attribute selection UI
-    ATTRIBUTES_FILE = os.path.join(DATA_DIR, "attributes.json")
+    config.ATTRIBUTES_FILE = os.path.join(config.DATA_DIR, "attributes.json")
     user_attrs = set()
-    # Load user attributes from USERS_FILE
-    if os.path.exists(USERS_FILE):
-        with open(USERS_FILE) as f:
+    # Load user attributes from config.USERS_FILE
+    if os.path.exists(config.USERS_FILE):
+        with open(config.USERS_FILE) as f:
             users = json.load(f)
         for u, v in (users or {}).items():
             if isinstance(v, dict):
@@ -295,8 +198,8 @@ def dashboard():
                 else:
                     user_attrs.add(a)
     # Load attributes.json
-    if os.path.exists(ATTRIBUTES_FILE):
-        with open(ATTRIBUTES_FILE) as f:
+    if os.path.exists(config.ATTRIBUTES_FILE):
+        with open(config.ATTRIBUTES_FILE) as f:
             all_attributes = set(json.load(f))
     else:
         all_attributes = set()
@@ -307,19 +210,19 @@ def dashboard():
     all_attributes = sorted(list(all_attributes))
     
     # Check if user has role_manager permission
-    is_role_manager = has_role(user_id, "role_manager")
+    is_role_manager = utils.has_role(user_id, "role_manager")
     
     # Load additional data for role managers
     role_manager_data = {}
     if is_role_manager:
         try:
-            with open(USERS_FILE) as f:
+            with open(config.USERS_FILE) as f:
                 role_manager_data['users'] = json.load(f)
         except (json.JSONDecodeError, FileNotFoundError):
             role_manager_data['users'] = {}
         
         try:
-            with open(POLICIES_FILE) as f:
+            with open(config.POLICIES_FILE) as f:
                 role_manager_data['policies'] = json.load(f)
         except (json.JSONDecodeError, FileNotFoundError):
             role_manager_data['policies'] = {}
@@ -327,7 +230,7 @@ def dashboard():
         # Load audit logs
         audit_logs = []
         try:
-            with open(AUDIT_LOG_FILE) as f:
+            with open(config.AUDIT_LOG_FILE) as f:
                 for line in f:
                     try:
                         entry = json.loads(line)
@@ -357,7 +260,8 @@ def api_files():
     if not user_id:
         return jsonify({"error": "Not authenticated"}), 401
 
-    user_files = get_user_files(user_id)
+    policies = utils.safe_load_json(config.POLICIES_FILE, {})
+    user_files = utils.get_user_files(user_id, policies, abe)
     return jsonify({"files": user_files})
 
 
@@ -382,7 +286,7 @@ def change_password():
         return redirect(url_for("dashboard"))
 
     try:
-        with open(USERS_FILE) as f:
+        with open(config.USERS_FILE) as f:
             users = json.load(f)
     except (json.JSONDecodeError, FileNotFoundError):
         flash("System error: Unable to load user data")
@@ -391,9 +295,9 @@ def change_password():
     if user_id in users:
         users[user_id]["password"] = generate_password_hash(new_password)
         try:
-            with open(USERS_FILE, "w") as f:
+            with open(config.USERS_FILE, "w") as f:
                 json.dump(users, f, indent=2)
-            log_audit(
+            utils.log_audit(
                 user_id,
                 "change_password",
                 details="Password changed",
@@ -459,7 +363,7 @@ def upload():
     policy = policy.strip()
 
     try:
-        policies = safe_load_json(POLICIES_FILE, {})
+        policies = utils.safe_load_json(config.POLICIES_FILE, {})
     except Exception:
         return (
             jsonify(success=False, error="System error: Unable to load policies"),
@@ -480,7 +384,7 @@ def upload():
             # Ensure filename is safe
             filename = os.path.basename(filename)
 
-            filepath = os.path.join(UPLOAD_FOLDER, filename)
+            filepath = os.path.join(config.UPLOAD_FOLDER, filename)
 
             # Encrypt and save file
             with open(filepath, "wb") as f_out:
@@ -490,7 +394,7 @@ def upload():
             uploaded_files.append(filename)
 
             # Log upload event for each file
-            log_audit(
+            utils.log_audit(
                 session["user_id"],
                 "upload",
                 details=f"Uploaded {original_filename}",
@@ -501,13 +405,13 @@ def upload():
             # Clean up any partially uploaded files
             for uploaded_file in uploaded_files:
                 try:
-                    os.remove(os.path.join(UPLOAD_FOLDER, uploaded_file))
+                    os.remove(os.path.join(config.UPLOAD_FOLDER, uploaded_file))
                 except:
                     pass
             return jsonify(success=False, error=f"Upload failed: {str(e)}"), 500
 
     try:
-        with open(POLICIES_FILE, "w") as f:
+        with open(config.POLICIES_FILE, "w") as f:
             json.dump(policies, f, indent=2)
     except IOError:
         return (
@@ -524,7 +428,7 @@ def upload():
     # Emit file updates to admin dashboard
     for filename in uploaded_files:
         # Get file stats for admin view
-        file_path = os.path.join(UPLOAD_FOLDER, filename)
+        file_path = os.path.join(config.UPLOAD_FOLDER, filename)
         file_stats = {
             'name': filename,
             'owner': session['user_id'],
@@ -573,7 +477,7 @@ def download(filename):
         return "Access Denied", 403
 
     try:
-        policies = safe_load_json(POLICIES_FILE, {})
+        policies = utils.safe_load_json(config.POLICIES_FILE, {})
         print(f"[DOWNLOAD] Loaded policies for {filename}: {policies.get(filename)}")
         policy_obj = policies.get(filename)
         if not policy_obj:
@@ -600,7 +504,7 @@ def download(filename):
         traceback.print_exc()
         return "Access Denied", 403
 
-    encrypted_path = os.path.join(UPLOAD_FOLDER, filename)
+    encrypted_path = os.path.join(config.UPLOAD_FOLDER, filename)
     decrypted_stream = BytesIO()
 
     try:
@@ -622,7 +526,7 @@ def download(filename):
 
     # Log download event
     print(f"[DOWNLOAD] Logging download event for user {user_id} and file {filename}")
-    log_audit(session['user_id'], 'download', details=f'Downloaded {filename}', ip=request.remote_addr)
+    utils.log_audit(session['user_id'], 'download', details=f'Downloaded {filename}', ip=request.remote_addr)
 
     decrypted_stream.seek(0)
     original_name = filename.replace(".enc", "")
@@ -634,7 +538,7 @@ def download(filename):
 def logout():
     user_id = session.get("user_id")
     if user_id:
-        log_audit(user_id, "logout", details="User logged out", ip=request.remote_addr)
+        utils.log_audit(user_id, "logout", details="User logged out", ip=request.remote_addr)
     session.clear()
     return redirect(url_for("home"))
 
@@ -647,13 +551,13 @@ def admin_dashboard():
 
     # Load users and policies with error handling
     try:
-        with open(USERS_FILE) as f:
+        with open(config.USERS_FILE) as f:
             users = json.load(f)
     except (json.JSONDecodeError, FileNotFoundError):
         users = {}
 
     try:
-        with open(POLICIES_FILE) as f:
+        with open(config.POLICIES_FILE) as f:
             policies = json.load(f)
     except (json.JSONDecodeError, FileNotFoundError):
         policies = {}
@@ -661,8 +565,8 @@ def admin_dashboard():
     # Admin sees all files, regardless of policy
     all_files = []
     try:
-        for fname in os.listdir(UPLOAD_FOLDER):
-            fpath = os.path.join(UPLOAD_FOLDER, fname)
+        for fname in os.listdir(config.UPLOAD_FOLDER):
+            fpath = os.path.join(config.UPLOAD_FOLDER, fname)
             if not os.path.isfile(fpath):
                 continue
             size = os.path.getsize(fpath)
@@ -687,7 +591,7 @@ def admin_dashboard():
     # Load audit logs from file
     audit_logs = []
     try:
-        with open(AUDIT_LOG_FILE) as f:
+        with open(config.AUDIT_LOG_FILE) as f:
             for line in f:
                 try:
                     entry = json.loads(line)
@@ -699,7 +603,7 @@ def admin_dashboard():
     audit_logs = list(reversed(audit_logs))  # latest first
 
     # Load global attribute list from attributes.json
-    ATTRIBUTES_FILE = os.path.join(DATA_DIR, "attributes.json")
+    config.ATTRIBUTES_FILE = os.path.join(config.DATA_DIR, "attributes.json")
     user_attrs = set()
     for u, v in (users or {}).items():
         if isinstance(v, dict):
@@ -716,8 +620,8 @@ def admin_dashboard():
             else:
                 user_attrs.add(a)
     # Load attributes.json
-    if os.path.exists(ATTRIBUTES_FILE):
-        with open(ATTRIBUTES_FILE) as f:
+    if os.path.exists(config.ATTRIBUTES_FILE):
+        with open(config.ATTRIBUTES_FILE) as f:
             all_attributes = set(json.load(f))
     else:
         all_attributes = set()
@@ -730,7 +634,7 @@ def admin_dashboard():
     all_attributes = sorted(list(all_attributes))
     # Save if updated
     if updated:
-        with open(ATTRIBUTES_FILE, "w") as f:
+        with open(config.ATTRIBUTES_FILE, "w") as f:
             json.dump(all_attributes, f, indent=2)
 
     return render_template(
@@ -783,14 +687,14 @@ def admin_add_user():
                 return jsonify(success=False, error="Invalid user ID format"), 400
             return "Invalid user ID format", 400
 
-        attributes, err = parse_and_validate_attrs(raw)
+        attributes, err = utils.parse_and_validate_attrs(raw)
         if err:
             if is_ajax:
                 return jsonify(success=False, error=err), 400
             return err, 400
 
         try:
-            with open(USERS_FILE) as f:
+            with open(config.USERS_FILE) as f:
                 users = json.load(f)
         except Exception:
             users = {}
@@ -798,9 +702,9 @@ def admin_add_user():
         # Create user with default password 'pass', attributes, and empty roles
         users[user_id] = {"attributes": attributes, "password": generate_password_hash("pass"), "roles": []}
         try:
-            with open(USERS_FILE, "w") as f:
+            with open(config.USERS_FILE, "w") as f:
                 json.dump(users, f, indent=2)
-                log_audit(
+                utils.log_audit(
                     session.get("user_id"),
                     "add_user",
                     details=f"Added user {user_id} with attributes: {attributes}",
@@ -851,7 +755,7 @@ def admin_update_user_roles():
             return jsonify(success=False, error=f"Invalid role: {role}"), 400
     
     try:
-        with open(USERS_FILE) as f:
+        with open(config.USERS_FILE) as f:
             users = json.load(f)
     except Exception:
         return jsonify(success=False, error="could not load users"), 500
@@ -871,10 +775,10 @@ def admin_update_user_roles():
     users[target_user]["roles"] = roles
     
     try:
-        with open(USERS_FILE, "w") as f:
+        with open(config.USERS_FILE, "w") as f:
             json.dump(users, f, indent=2)
         
-        log_audit(
+        utils.log_audit(
             session.get("user_id"),
             "update_user_roles",
             details=f"Updated roles for {target_user} from {old_roles} to {roles}",
@@ -902,7 +806,7 @@ def admin_update_user_roles():
 def admin_edit_user(user_id):
     if session.get("user_id") != "admin":
         return redirect(url_for("home"))
-    with open(USERS_FILE) as f:
+    with open(config.USERS_FILE) as f:
         users = json.load(f)
     if request.method == "POST":
         # Detect AJAX/JSON requests and accept both form-encoded and JSON payloads
@@ -919,7 +823,7 @@ def admin_edit_user(user_id):
         else:
             raw = request.form.get("attributes", "")
 
-        attributes, err = parse_and_validate_attrs(raw)
+        attributes, err = utils.parse_and_validate_attrs(raw)
         if err:
             return jsonify(success=False, error=err), 400
 
@@ -935,9 +839,9 @@ def admin_edit_user(user_id):
             users[user_id] = {"attributes": attributes, "password": generate_password_hash("pass")}
 
         try:
-            with open(USERS_FILE, "w") as f:
+            with open(config.USERS_FILE, "w") as f:
                 json.dump(users, f, indent=2)
-            log_audit(
+            utils.log_audit(
                 session.get("user_id"),
                 "edit_user",
                 details=f"Changed attributes for user {user_id} from {old_attrs} to {attributes}",
@@ -978,12 +882,12 @@ def admin_edit_user(user_id):
 def admin_delete_user(user_id):
     if session.get("user_id") != "admin":
         return redirect(url_for("home"))
-    with open(USERS_FILE) as f:
+    with open(config.USERS_FILE) as f:
         users = json.load(f)
     users.pop(user_id, None)
-    with open(USERS_FILE, "w") as f:
+    with open(config.USERS_FILE, "w") as f:
         json.dump(users, f, indent=2)
-        log_audit(
+        utils.log_audit(
             session.get("user_id"),
             "delete_user",
             details=f"Deleted user {user_id}",
@@ -1000,13 +904,13 @@ def admin_add_policy():
     if request.method == "POST":
         file = request.form.get("file")
         policy = request.form.get("policy")
-        with open(POLICIES_FILE) as f:
+        with open(config.POLICIES_FILE) as f:
             policies = json.load(f)
         old_policy = policies.get(file, {}).get("policy", "")
         policies[file] = {"policy": policy}
-        with open(POLICIES_FILE, "w") as f:
+        with open(config.POLICIES_FILE, "w") as f:
             json.dump(policies, f, indent=2)
-        log_audit(
+        utils.log_audit(
             session.get("user_id"),
             "add_policy",
             details=f"Added policy for file {file}: {policy}",
@@ -1027,7 +931,7 @@ def admin_add_policy():
 def admin_edit_policy(file):
     if session.get("user_id") != "admin":
         return redirect(url_for("home"))
-    with open(POLICIES_FILE) as f:
+    with open(config.POLICIES_FILE) as f:
         policies = json.load(f)
     if request.method == "POST":
         policy = request.form.get("policy")
@@ -1045,9 +949,9 @@ def admin_edit_policy(file):
         policies[file] = {"policy": policy}
         # no longer support 'key' field; policies store only 'policy' and optional sender
         try:
-            with open(POLICIES_FILE, "w") as f:
+            with open(config.POLICIES_FILE, "w") as f:
                 json.dump(policies, f, indent=2)
-            log_audit(
+            utils.log_audit(
                 session.get("user_id"),
                 "edit_policy",
                 details=f"Edited policy for file {file} from {old_policy} to {policy}",
@@ -1077,12 +981,12 @@ def admin_edit_policy(file):
 def admin_delete_policy(file):
     if session.get("user_id") != "admin":
         return redirect(url_for("home"))
-    with open(POLICIES_FILE) as f:
+    with open(config.POLICIES_FILE) as f:
         policies = json.load(f)
     policies.pop(file, None)
-    with open(POLICIES_FILE, "w") as f:
+    with open(config.POLICIES_FILE, "w") as f:
         json.dump(policies, f, indent=2)
-    log_audit(session.get('user_id'), 'delete_policy', details=f'Deleted policy for file {file}', ip=request.remote_addr)
+    utils.log_audit(session.get('user_id'), 'delete_policy', details=f'Deleted policy for file {file}', ip=request.remote_addr)
     
     # Emit real-time update to admin dashboard
     socketio.emit('policy_deleted', {
@@ -1103,7 +1007,7 @@ def admin_delete_user_ajax():
     if not user:
         return jsonify(success=False, error="user required"), 400
     try:
-        with open(USERS_FILE) as f:
+        with open(config.USERS_FILE) as f:
             users = json.load(f)
     except Exception:
         users = {}
@@ -1112,9 +1016,9 @@ def admin_delete_user_ajax():
     users.pop(user, None)
 
     try:
-        with open(USERS_FILE, "w") as f:
+        with open(config.USERS_FILE, "w") as f:
             json.dump(users, f, indent=2)
-        log_audit(
+        utils.log_audit(
             session.get("user_id"),
             "delete_user",
             details=f"Deleted user {user}",
@@ -1140,15 +1044,15 @@ def admin_delete_policy_ajax():
     if not filename:
         return jsonify(success=False, error="file required"), 400
     try:
-        with open(POLICIES_FILE) as f:
+        with open(config.POLICIES_FILE) as f:
             policies = json.load(f)
     except Exception:
         policies = {}
     policies.pop(filename, None)
     try:
-        with open(POLICIES_FILE, "w") as f:
+        with open(config.POLICIES_FILE, "w") as f:
             json.dump(policies, f, indent=2)
-        log_audit(
+        utils.log_audit(
             session.get("user_id"),
             "delete_policy",
             details=f"Deleted policy for file {filename}",
@@ -1191,7 +1095,7 @@ def delete_file():
 
     # Check if user owns the file or is admin
     try:
-        with open(POLICIES_FILE) as f:
+        with open(config.POLICIES_FILE) as f:
             policies = json.load(f)
     except Exception:
         policies = {}
@@ -1212,11 +1116,11 @@ def delete_file():
         )
 
     # Remove file from uploads
-    file_path = os.path.join(UPLOAD_FOLDER, filename)
+    file_path = os.path.join(config.UPLOAD_FOLDER, filename)
     try:
         if os.path.exists(file_path):
             os.remove(file_path)
-        log_audit(
+        utils.log_audit(
             user_id,
             "delete_file",
             details=f"Deleted file {filename}",
@@ -1229,7 +1133,7 @@ def delete_file():
     if filename in policies:
         policies.pop(filename, None)
         try:
-            with open(POLICIES_FILE, "w") as f:
+            with open(config.POLICIES_FILE, "w") as f:
                 json.dump(policies, f, indent=2)
         except Exception as e:
             return jsonify(success=False, error=f"could not update policies: {e}"), 500
@@ -1261,11 +1165,11 @@ def admin_delete_file():
         return jsonify(success=False, error="filename required"), 400
 
     # Remove file from uploads
-    file_path = os.path.join(UPLOAD_FOLDER, filename)
+    file_path = os.path.join(config.UPLOAD_FOLDER, filename)
     try:
         if os.path.exists(file_path):
             os.remove(file_path)
-        log_audit(
+        utils.log_audit(
             session.get("user_id"),
             "delete_file",
             details=f"Deleted file {filename}",
@@ -1276,7 +1180,7 @@ def admin_delete_file():
 
     # Remove policy entry if present
     try:
-        with open(POLICIES_FILE) as f:
+        with open(config.POLICIES_FILE) as f:
             policies = json.load(f)
     except Exception:
         policies = {}
@@ -1284,7 +1188,7 @@ def admin_delete_file():
     if filename in policies:
         policies.pop(filename, None)
         try:
-            with open(POLICIES_FILE, "w") as f:
+            with open(config.POLICIES_FILE, "w") as f:
                 json.dump(policies, f, indent=2)
         except Exception as e:
             return jsonify(success=False, error=f"could not update policies: {e}"), 500
@@ -1316,7 +1220,7 @@ def admin_bulk_delete_users():
         return jsonify(success=False, error="users must be a list"), 400
 
     try:
-        with open(USERS_FILE) as f:
+        with open(config.USERS_FILE) as f:
             users = json.load(f)
     except Exception:
         users = {}
@@ -1325,12 +1229,12 @@ def admin_bulk_delete_users():
         users.pop(u, None)
 
     try:
-        with open(USERS_FILE, "w") as f:
+        with open(config.USERS_FILE, "w") as f:
             json.dump(users, f, indent=2)
 
         # Log audit for each deleted user
         for u in users_to_delete:
-            log_audit(
+            utils.log_audit(
                 session.get("user_id"),
                 "bulk_delete_user",
                 details=f"Bulk deleted user {u}",
@@ -1364,7 +1268,7 @@ def admin_bulk_delete_policies():
         return jsonify(success=False, error="files must be a list"), 400
 
     try:
-        with open(POLICIES_FILE) as f:
+        with open(config.POLICIES_FILE) as f:
             policies = json.load(f)
     except Exception:
         policies = {}
@@ -1373,12 +1277,12 @@ def admin_bulk_delete_policies():
         policies.pop(fname, None)
 
     try:
-        with open(POLICIES_FILE, "w") as f:
+        with open(config.POLICIES_FILE, "w") as f:
             json.dump(policies, f, indent=2)
 
         # Log audit for each deleted policy
         for fname in files_to_delete:
-            log_audit(
+            utils.log_audit(
                 session.get("user_id"),
                 "bulk_delete_policy",
                 details=f"Bulk deleted policy for file {fname}",
@@ -1413,12 +1317,12 @@ def admin_bulk_set_attrs():
         return jsonify(success=False, error="users must be a list"), 400
 
     # normalize attributes into a list
-    attrs_list, err = parse_and_validate_attrs(attrs_raw)
+    attrs_list, err = utils.parse_and_validate_attrs(attrs_raw)
     if err:
         return jsonify(success=False, error=err), 400
 
     try:
-        with open(USERS_FILE) as f:
+        with open(config.USERS_FILE) as f:
             users = json.load(f)
     except Exception:
         users = {}
@@ -1426,7 +1330,7 @@ def admin_bulk_set_attrs():
     for u in users_to_update:
         old_attrs = users.get(u, [])
         users[u] = attrs_list
-        log_audit(
+        utils.log_audit(
             session.get("user_id"),
             "bulk_set_attrs",
             details=f"User {u}: attributes changed from {old_attrs} to {attrs_list}",
@@ -1434,7 +1338,7 @@ def admin_bulk_set_attrs():
         )
 
     try:
-        with open(USERS_FILE, "w") as f:
+        with open(config.USERS_FILE, "w") as f:
             json.dump(users, f, indent=2)
 
         # Emit real-time update to admin dashboard
@@ -1500,5 +1404,95 @@ def handle_leave_admin():
         leave_room("admin_updates")
 
 
+@app.route("/admin/download_audit_logs", methods=["GET"])
+def download_audit_logs():
+    """
+    Download audit logs as a JSON file (admin only).
+    Implements security best practices:
+    - Admin-only access
+    - Optional date range filtering
+    - Sanitized filename with timestamp
+    - Proper content-type headers
+    """
+    if session.get("user_id") != "admin":
+        return jsonify(success=False, error="unauthorized"), 403
+    
+    try:
+        # Get optional date range parameters
+        from_date = request.args.get("from")
+        to_date = request.args.get("to")
+        
+        logs = []
+        
+        if not os.path.exists(config.AUDIT_LOG_FILE):
+            # Return empty logs if file doesn't exist
+            logs_data = []
+        else:
+            with open(config.AUDIT_LOG_FILE, "r") as f:
+                for line in f:
+                    try:
+                        entry = json.loads(line)
+                        
+                        # Apply date filtering if specified
+                        if from_date or to_date:
+                            try:
+                                entry_time = datetime.strptime(entry.get("time", ""), "%Y-%m-%d %H:%M:%S")
+                                
+                                if from_date:
+                                    from_datetime = datetime.strptime(from_date, "%Y-%m-%d")
+                                    if entry_time < from_datetime:
+                                        continue
+                                
+                                if to_date:
+                                    to_datetime = datetime.strptime(to_date, "%Y-%m-%d")
+                                    # Make to_date inclusive
+                                    to_datetime = to_datetime + timedelta(days=1)
+                                    if entry_time >= to_datetime:
+                                        continue
+                            except (ValueError, KeyError):
+                                # Include entries with invalid dates
+                                pass
+                        
+                        logs.append(entry)
+                    except json.JSONDecodeError:
+                        # Skip malformed entries
+                        continue
+            
+            logs_data = logs
+        
+        # Create JSON file in memory
+        logs_json = json.dumps(logs_data, indent=2)
+        logs_bytes = BytesIO(logs_json.encode('utf-8'))
+        
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"audit_logs_{timestamp}.json"
+        
+        # Log the download action
+        utils.log_audit(
+            session.get("user_id"),
+            "download_audit_logs",
+            details=f"Downloaded {len(logs_data)} audit log entries",
+            ip=request.remote_addr
+        )
+        
+        # Send file with proper headers
+        return send_file(
+            logs_bytes,
+            mimetype="application/json",
+            as_attachment=True,
+            download_name=filename
+        )
+        
+    except Exception as e:
+        print(f"[AUDIT DOWNLOAD] Error: {e}")
+        return jsonify(success=False, error="Failed to download audit logs"), 500
+
+
 if __name__ == "__main__":
+    # Start the audit log cleanup thread
+    cleanup_thread = threading.Thread(target=schedule_audit_cleanup, daemon=True)
+    cleanup_thread.start()
+    print(f"[AUDIT CLEANUP] Started background cleanup task (retention: {config.AUDIT_LOG_RETENTION_DAYS} days)")
+    
     socketio.run(app, debug=True, port=7130, host="0.0.0.0")

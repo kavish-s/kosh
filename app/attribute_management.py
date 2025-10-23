@@ -1,62 +1,39 @@
-import os, json
+import os
+import json
 from flask import Blueprint, request, session, jsonify
 from datetime import datetime
-
-DATA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')  # Go up one level to project root
-USERS_FILE = os.path.join(DATA_DIR, 'users.json')
-ATTRIBUTES_FILE = os.path.join(DATA_DIR, 'attributes.json')
+from . import config
+from . import utils
 
 attribute_bp = Blueprint('attribute_bp', __name__)
 
+
 def get_all_attributes():
-    if not os.path.exists(ATTRIBUTES_FILE):
+    """Load all attributes from the attributes file."""
+    if not os.path.exists(config.ATTRIBUTES_FILE):
         return []
-    with open(ATTRIBUTES_FILE) as f:
+    with open(config.ATTRIBUTES_FILE) as f:
         return json.load(f)
+
 
 def save_all_attributes(attrs):
-    with open(ATTRIBUTES_FILE, 'w') as f:
+    """Save attributes to the attributes file."""
+    with open(config.ATTRIBUTES_FILE, 'w') as f:
         json.dump(attrs, f, indent=2)
 
+
 def get_all_users():
-    if not os.path.exists(USERS_FILE):
+    """Load all users from the users file."""
+    if not os.path.exists(config.USERS_FILE):
         return {}
-    with open(USERS_FILE) as f:
+    with open(config.USERS_FILE) as f:
         return json.load(f)
-
-def has_role(user_id, role):
-    """Check if a user has a specific role"""
-    try:
-        users = get_all_users()
-        user_data = users.get(user_id)
-        if isinstance(user_data, dict):
-            roles = user_data.get("roles", [])
-            return role in roles or "admin" in roles
-        return False
-    except Exception:
-        return False
-
-def log_audit(user, action, details=None, ip=None):
-    """Log audit events"""
-    try:
-        AUDIT_LOG_FILE = os.path.join(DATA_DIR, 'audit_logs.jsonl')
-        entry = {
-            "time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "user": str(user) if user else "unknown",
-            "action": str(action) if action else "unknown",
-            "details": str(details) if details else "",
-            "ip": str(ip) if ip else "",
-        }
-        with open(AUDIT_LOG_FILE, "a") as f:
-            f.write(json.dumps(entry) + "\n")
-    except Exception as e:
-        print(f"Audit logging failed: {e}")
 
 @attribute_bp.route('/admin/add_attribute', methods=['POST'])
 def add_attribute():
     user_id = session.get('user_id')
     # Allow admin or role_manager to add attributes
-    if user_id != 'admin' and not has_role(user_id, 'role_manager'):
+    if user_id != 'admin' and not utils.has_role(user_id, 'role_manager'):
         return jsonify(success=False, error='unauthorized'), 403
     
     data = request.get_json() or {}
@@ -76,7 +53,7 @@ def add_attribute():
     save_all_attributes(attrs)
     
     # Log the action
-    log_audit(user_id, 'add_attribute', details=f'Added attribute: {attr}', ip=request.remote_addr)
+    utils.log_audit(user_id, 'add_attribute', details=f'Added attribute: {attr}', ip=request.remote_addr)
     
     # Import socketio from current module
     from flask import current_app
@@ -93,7 +70,7 @@ def add_attribute():
 def remove_attribute():
     user_id = session.get('user_id')
     # Allow admin or role_manager to remove attributes
-    if user_id != 'admin' and not has_role(user_id, 'role_manager'):
+    if user_id != 'admin' and not utils.has_role(user_id, 'role_manager'):
         return jsonify(success=False, error='unauthorized'), 403
     
     data = request.get_json() or {}
@@ -126,7 +103,7 @@ def remove_attribute():
         save_all_attributes(attrs)
         
         # Log the action
-        log_audit(user_id, 'remove_attribute', details=f'Removed attribute: {attr}', ip=request.remote_addr)
+        utils.log_audit(user_id, 'remove_attribute', details=f'Removed attribute: {attr}', ip=request.remote_addr)
         
         # Import socketio from current module
         from flask import current_app
@@ -152,7 +129,7 @@ def validate_user_attributes(attributes):
 def role_manager_assign_attributes():
     """Allow role managers to assign attributes to users"""
     user_id = session.get('user_id')
-    if user_id != 'admin' and not has_role(user_id, 'role_manager'):
+    if user_id != 'admin' and not utils.has_role(user_id, 'role_manager'):
         return jsonify(success=False, error='unauthorized'), 403
     
     data = request.get_json() or {}
@@ -195,11 +172,11 @@ def role_manager_assign_attributes():
     
     # Save users
     try:
-        with open(USERS_FILE, 'w') as f:
+        with open(config.USERS_FILE, 'w') as f:
             json.dump(users, f, indent=2)
         
         # Log the action
-        log_audit(
+        utils.log_audit(
             user_id,
             'assign_attributes',
             details=f'Assigned attributes to {target_user}: {attrs} (was: {old_attrs})',
