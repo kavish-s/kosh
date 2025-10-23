@@ -234,6 +234,246 @@
         </div>
     </main>
 
+    <!-- Role Manager Section (only visible if user has role_manager permission) -->
+    {% if is_role_manager %}
+    <main class="max-w-7xl mx-auto px-6 py-8">
+        <div class="mb-8">
+            <h2 class="text-2xl font-bold text-notion-text mb-2 font-title">Role Management</h2>
+            <p class="text-notion-text-secondary text-lg font-content">You have been granted permissions to manage user roles and attributes.</p>
+        </div>
+        
+        <div class="flex flex-col gap-8">
+            <!-- Users Management Section -->
+            <section class="h-full flex flex-col">
+                <div class="bg-notion-card border border-notion-border rounded-xl notion-shadow animate-scale-in h-full flex flex-col">
+                    <div class="p-6 border-b border-notion-border flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div class="mb-2 md:mb-0">
+                            <h3 class="text-xl font-semibold text-notion-text font-title flex items-center mb-2">
+                                Users & Attributes
+                                <span title="View and manage user attributes" class="ml-2 text-notion-accent cursor-help">&#9432;</span>
+                            </h3>
+                            <p class="text-notion-text-secondary text-base mt-1">View users and their attributes.</p>
+                        </div>
+                    </div>
+                    <div class="p-4 flex flex-col gap-2">
+                        <div class="flex items-center space-x-2">
+                            <input type="text" id="rm-user-search" placeholder="Search users..." class="flex-1 px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text" onkeyup="filterRMUsers()">
+                            <button type="button" onclick="document.getElementById('rm-user-search').value='';filterRMUsers();" class="btn-secondary px-3 py-2 rounded text-sm" aria-label="Clear search">
+                                <i data-lucide="x" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="p-6 flex-1 overflow-x-auto">
+                        <table class="min-w-full divide-y divide-notion-border" id="rm-users-table">
+                            <thead>
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">User</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Attributes</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Roles</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-notion-border" id="rm-users-tbody">
+                                {% for user, user_data in role_manager_data.users.items() %}
+                                {% if user_data is mapping %}
+                                    {% set attr_list = user_data.get('attributes', []) %}
+                                    {% set role_list = user_data.get('roles', []) %}
+                                {% else %}
+                                    {% set attr_list = user_data if user_data is iterable and user_data is not string else [] %}
+                                    {% set role_list = [] %}
+                                {% endif %}
+                                <tr class="hover:bg-notion-hover transition-colors duration-150">
+                                    <td class="px-4 py-3 font-medium text-notion-text">{{ user }}</td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex flex-wrap gap-1">
+                                            {% for attr in attr_list %}
+                                            <span class="inline-flex px-2 py-1 text-xs rounded-full bg-notion-accent/20 text-notion-accent">{{ attr }}</span>
+                                            {% endfor %}
+                                        </div>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        <div class="flex flex-wrap gap-1">
+                                            {% for role in role_list %}
+                                            <span class="inline-flex px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400">{{ role }}</span>
+                                            {% endfor %}
+                                            {% if not role_list %}
+                                            <span class="text-notion-text-secondary text-xs italic">No roles</span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Attribute Management Section -->
+            <section class="h-full flex flex-col">
+                <div class="bg-notion-card border border-notion-border rounded-xl notion-shadow animate-scale-in h-full flex flex-col">
+                    <div class="p-6 border-b border-notion-border">
+                        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                            <div>
+                                <h3 class="text-xl font-semibold text-notion-text font-title flex items-center">
+                                    Attribute Management
+                                    <span title="Create and manage system attributes" class="ml-2 text-notion-accent cursor-help">&#9432;</span>
+                                </h3>
+                                <p class="text-notion-text-secondary text-sm mt-1">Create new attributes and assign them to users.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-6">
+                        <!-- Create New Attribute -->
+                        <div class="mb-6">
+                            <h4 class="text-base font-semibold text-notion-text mb-3">Create New Attribute</h4>
+                            <div class="flex gap-2">
+                                <input type="text" id="rm-new-attr" placeholder="Enter attribute name (e.g., department, role)" class="flex-1 px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text">
+                                <button onclick="roleManagerAttributeManager.add()" class="btn-primary px-4 py-2 rounded text-white">
+                                    <i data-lucide="plus" class="w-4 h-4 inline mr-1"></i>
+                                    Add Attribute
+                                </button>
+                            </div>
+                            <div id="rm-attr-error" class="text-sm text-red-400 mt-2" style="display:none;"></div>
+                        </div>
+
+                        <!-- Existing Attributes -->
+                        <div class="mb-6">
+                            <h4 class="text-base font-semibold text-notion-text mb-3">Existing Attributes</h4>
+                            <div class="flex flex-wrap gap-2">
+                                {% for attr in role_manager_data.all_attributes %}
+                                <div class="inline-flex items-center gap-2 px-3 py-2 bg-notion-accent/20 text-notion-accent rounded-lg">
+                                    <span>{{ attr }}</span>
+                                    <button onclick="roleManagerAttributeManager.remove('{{ attr }}')" class="text-notion-text-secondary hover:text-red-400 transition-colors" title="Remove attribute">
+                                        <i data-lucide="x" class="w-3 h-3"></i>
+                                    </button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Assign Attributes to Users -->
+                        <div>
+                            <h4 class="text-base font-semibold text-notion-text mb-3">Assign Attributes to User</h4>
+                            <div class="space-y-3">
+                                <div>
+                                    <label for="rm-user-select" class="block text-sm font-medium text-notion-text mb-2">Select User</label>
+                                    <select id="rm-user-select" class="w-full px-3 py-2 rounded border border-notion-border bg-notion-input text-notion-text">
+                                        <option value="">-- Select a user --</option>
+                                        {% for user in role_manager_data.users.keys() %}
+                                        {% if user != 'admin' %}
+                                        <option value="{{ user }}">{{ user }}</option>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-notion-text mb-2">Select Attributes</label>
+                                    <div id="rm-attr-selection" class="flex flex-wrap gap-2 p-3 border border-notion-border rounded bg-notion-hover min-h-[60px]">
+                                        {% for attr in role_manager_data.all_attributes %}
+                                        <button type="button" 
+                                                data-attr="{{ attr }}" 
+                                                class="rm-attr-btn px-3 py-1 rounded border border-notion-border bg-notion-card text-notion-text hover:bg-notion-accent hover:text-white transition-colors"
+                                                onclick="roleManagerAttributeManager.toggleAttribute(this)">
+                                            {{ attr }}
+                                        </button>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <div class="flex justify-end">
+                                    <button onclick="roleManagerAttributeManager.assignAttributes()" class="btn-primary px-4 py-2 rounded text-white">
+                                        <i data-lucide="check" class="w-4 h-4 inline mr-1"></i>
+                                        Assign Attributes
+                                    </button>
+                                </div>
+                                <div id="rm-assign-error" class="text-sm text-red-400" style="display:none;"></div>
+                                <div id="rm-assign-success" class="text-sm text-green-400" style="display:none;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Policies Section -->
+            <section class="h-full flex flex-col">
+                <div class="bg-notion-card border border-notion-border rounded-xl notion-shadow animate-scale-in h-full flex flex-col">
+                    <div class="p-6 border-b border-notion-border">
+                        <div>
+                            <h3 class="text-xl font-semibold text-notion-text font-title flex items-center">
+                                File Policies
+                                <span title="View file access policies" class="ml-2 text-notion-accent cursor-help">&#9432;</span>
+                            </h3>
+                            <p class="text-notion-text-secondary text-sm mt-1">View file access policies in the system.</p>
+                        </div>
+                    </div>
+                    <div class="p-6 flex-1 overflow-x-auto">
+                        <table class="min-w-full divide-y divide-notion-border">
+                            <thead>
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">File</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Policy</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Owner</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-notion-border">
+                                {% for file, policy_obj in role_manager_data.policies.items() %}
+                                <tr class="hover:bg-notion-hover transition-colors duration-150">
+                                    <td class="px-4 py-3 font-medium text-notion-text">
+                                        <span class="block max-w-[220px] truncate" title="{{ file }}">{{ file }}</span>
+                                    </td>
+                                    <td class="px-4 py-3">
+                                        {% if policy_obj.policy %}
+                                            <div class="flex flex-wrap gap-1">
+                                                {% for attr in policy_obj.policy.split(',') %}
+                                                <span class="inline-flex px-2 py-1 text-xs rounded-full bg-notion-accent/20 text-notion-accent">{{ attr.strip() }}</span>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <span class="text-notion-text-secondary italic">No policy set</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="px-4 py-3 text-notion-text-secondary">
+                                        {{ policy_obj.sender if policy_obj.sender else 'Unknown' }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Audit Logs Section -->
+            <section class="h-full flex flex-col">
+                <div class="bg-notion-card border border-notion-border rounded-xl notion-shadow p-6">
+                    <h4 class="text-lg font-semibold text-notion-text font-title mb-4">Recent Activity Logs</h4>
+                    <div class="overflow-x-auto max-h-80">
+                        <table class="min-w-full divide-y divide-notion-border">
+                            <thead>
+                                <tr>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Time</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">User</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Action</th>
+                                    <th class="px-4 py-2 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Details</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-notion-border">
+                                {% for log in role_manager_data.audit_logs[:50] %}
+                                <tr class="hover:bg-notion-hover transition">
+                                    <td class="px-4 py-2 text-sm">{{ log.time }}</td>
+                                    <td class="px-4 py-2 text-sm">{{ log.user }}</td>
+                                    <td class="px-4 py-2 text-sm">{{ log.action }}</td>
+                                    <td class="px-4 py-2 text-sm">{{ log.details }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+    {% endif %}
+
     <!-- Change Password Modal -->
     <div id="change-password-modal" class="fixed inset-0 z-60 hidden items-center justify-center bg-black bg-opacity-50" aria-hidden="true" role="dialog" aria-modal="true">
         <div class="bg-notion-card border border-notion-border rounded-xl w-full max-w-md p-6 m-4">
@@ -276,7 +516,42 @@
     <script>
         // Make all attributes available to JavaScript
         window.allAttributes = {{ all_attributes|tojson|safe }};
+        
+        {% if is_role_manager %}
+        // Make role manager data available to JavaScript
+        window.roleManagerUsers = {{ role_manager_data.users|tojson|safe }};
+        {% endif %}
 
+        // Filter function for role manager users table
+        function filterRMUsers() {
+            const input = document.getElementById('rm-user-search');
+            if (!input) return;
+            
+            const filter = input.value.toLowerCase();
+            const table = document.getElementById('rm-users-table');
+            if (!table) return;
+            
+            const rows = table.getElementsByTagName('tr');
+            
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                const cells = row.getElementsByTagName('td');
+                let shouldShow = false;
+                
+                for (let j = 0; j < cells.length; j++) {
+                    const cell = cells[j];
+                    if (cell) {
+                        const textValue = cell.textContent || cell.innerText;
+                        if (textValue.toLowerCase().indexOf(filter) > -1) {
+                            shouldShow = true;
+                            break;
+                        }
+                    }
+                }
+                
+                row.style.display = shouldShow ? '' : 'none';
+            }
+        }
     </script>
     
     <!-- Component Scripts -->
@@ -286,6 +561,9 @@
     <script src="/static/shared/modules/dashboard-file-manager.js"></script>
     <script src="/static/shared/modules/upload-manager.js"></script>
     <script src="/static/shared/modules/password-manager.js"></script>
+    {% if is_role_manager %}
+    <script src="/static/shared/modules/role-manager-attribute.js"></script>
+    {% endif %}
     
     <!-- Main Dashboard Script -->
     <script src="/static/dashboard/dashboard.js"></script>

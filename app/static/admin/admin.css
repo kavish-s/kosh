@@ -123,6 +123,18 @@ h1, h2, h3, h4, h5, h6, .title-font {
     border-color: #16a34a;
 }
 
+.btn-action-info {
+    background: #8b5cf6;
+    color: #ffffff;
+    border-color: #8b5cf6;
+}
+
+.btn-action-info:hover {
+    background: #7c3aed;
+    color: #ffffff;
+    border-color: #7c3aed;
+}
+
 /* Table styles */
 tbody tr:nth-child(even) { 
     background-color: rgba(255, 255, 255, 0.02); 

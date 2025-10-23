@@ -55,7 +55,95 @@ class AuditManager {
         
         this.filter();
     }
+
+    /**
+     * Download audit logs with optional date filtering
+     */
+    async downloadLogs() {
+        try {
+            const fromDate = document.getElementById('audit-from')?.value || '';
+            const toDate = document.getElementById('audit-to')?.value || '';
+            
+            // Build query parameters
+            const params = new URLSearchParams();
+            if (fromDate) params.append('from', fromDate);
+            if (toDate) params.append('to', toDate);
+            
+            const url = `/admin/download_audit_logs${params.toString() ? '?' + params.toString() : ''}`;
+            
+            // Show loading indicator
+            const originalContent = event?.target?.innerHTML;
+            if (event?.target) {
+                event.target.disabled = true;
+                event.target.innerHTML = '<i data-lucide="loader" class="w-4 h-4 animate-spin"></i><span>Downloading...</span>';
+                lucide.createIcons();
+            }
+            
+            // Fetch the file
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error('Failed to download audit logs');
+            }
+            
+            // Get the blob
+            const blob = await response.blob();
+            
+            // Create a download link
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = downloadUrl;
+            
+            // Extract filename from Content-Disposition header or use default
+            const contentDisposition = response.headers.get('Content-Disposition');
+            let filename = 'audit_logs.json';
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+                if (filenameMatch) {
+                    filename = filenameMatch[1];
+                }
+            }
+            
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            
+            // Cleanup
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(downloadUrl);
+            
+            // Show success message
+            if (typeof showToast === 'function') {
+                const dateRangeMsg = (fromDate || toDate) 
+                    ? ` (${fromDate || 'beginning'} to ${toDate || 'now'})` 
+                    : '';
+                showToast(`Audit logs downloaded successfully${dateRangeMsg}`, 'success');
+            }
+            
+        } catch (error) {
+            console.error('Error downloading audit logs:', error);
+            if (typeof showToast === 'function') {
+                showToast('Failed to download audit logs', 'error');
+            } else {
+                alert('Failed to download audit logs');
+            }
+        } finally {
+            // Restore button state
+            if (event?.target) {
+                event.target.disabled = false;
+                if (originalContent) {
+                    event.target.innerHTML = originalContent;
+                    lucide.createIcons();
+                }
+            }
+        }
+    }
 }
 
 // Global audit manager instance
 const auditManager = new AuditManager();
+
+// Global function for backward compatibility
+function downloadAuditLogs() {
+    auditManager.downloadLogs();
+}

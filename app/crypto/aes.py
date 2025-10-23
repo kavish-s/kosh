@@ -3,20 +3,11 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives import hashes, hmac
 from cryptography.hazmat.backends import default_backend
 from cryptography.exceptions import InvalidTag
-
-# Using separate keys for encryption and authentication is a good practice.
-
-# Get the project root directory (two levels up from this file)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))  # crypto directory
-APP_DIR = os.path.dirname(BASE_DIR)  # app directory
-PROJECT_ROOT = os.path.dirname(APP_DIR)  # project root
-DATA_PATH = os.path.join(PROJECT_ROOT, "data")
-os.makedirs(DATA_PATH, exist_ok=True)
-AES_KEY_PATH = os.path.join(DATA_PATH, "aes_encryption.key")
-HMAC_KEY_PATH = os.path.join(DATA_PATH, "aes_hmac.key")
+from .. import config
 
 
 def load_or_generate_key(path):
+    """Load encryption key from file or generate new one if it doesn't exist."""
     if os.path.exists(path):
         with open(path, "rb") as f:
             return f.read()
@@ -27,13 +18,14 @@ def load_or_generate_key(path):
         return key
 
 
-aes_key = load_or_generate_key(AES_KEY_PATH)
-hmac_key = load_or_generate_key(HMAC_KEY_PATH)
+# Load or generate encryption keys
+aes_key = load_or_generate_key(config.AES_KEY_PATH)
+hmac_key = load_or_generate_key(config.HMAC_KEY_PATH)
 
 backend = default_backend()
-IV_SIZE = 16  # AES block size
-CHUNK_SIZE = 65536  # 64KB
-TAG_SIZE = 32  # HMAC-SHA256 output size
+IV_SIZE = config.IV_SIZE
+CHUNK_SIZE = config.CHUNK_SIZE
+TAG_SIZE = config.TAG_SIZE
 
 
 def encrypt(in_file, out_file):

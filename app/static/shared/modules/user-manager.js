@@ -362,6 +362,97 @@ class UserManager {
             toastManager.show('Network error', 'error');
         }
     }
+
+    /**
+     * Open manage roles modal
+     * @param {string} user - Username
+     * @param {string} rolesStr - Current roles as comma-separated string
+     */
+    openManageRolesModal(user, rolesStr) {
+        const safeUser = uiHelpers.escapeHtml(user || '');
+        const currentRoles = (rolesStr || '').split(',').map(r => r.trim()).filter(Boolean);
+        
+        const availableRoles = [
+            { id: 'role_manager', name: 'Role Manager', description: 'Can create and assign roles to other users' }
+        ];
+        
+        let roleCheckboxes = '';
+        availableRoles.forEach(role => {
+            const checked = currentRoles.includes(role.id);
+            roleCheckboxes += `
+                <div class='mb-3 p-3 border border-notion-border rounded-lg hover:bg-notion-hover transition-colors'>
+                    <label class='flex items-start cursor-pointer'>
+                        <input type='checkbox' name='role' value='${role.id}' 
+                            ${checked ? 'checked' : ''} 
+                            class='mt-1 mr-3 rounded border-notion-border bg-notion-input'>
+                        <div>
+                            <div class='font-medium text-notion-text'>${uiHelpers.escapeHtml(role.name)}</div>
+                            <div class='text-sm text-notion-text-secondary'>${uiHelpers.escapeHtml(role.description)}</div>
+                        </div>
+                    </label>
+                </div>
+            `;
+        });
+
+        modalManager.show(`
+            <h3 class='text-lg font-bold mb-2'>Manage Roles for ${safeUser}</h3>
+            <p class='text-sm text-notion-text-secondary mb-4'>Select the roles you want to assign to this user.</p>
+            <form id='manage-roles-form'>
+                <input type='hidden' name='user' value='${safeUser}'>
+                <div class='mb-4'>
+                    ${roleCheckboxes}
+                </div>
+                <div class='flex justify-end space-x-2'>
+                    <button type='button' onclick='closeModal()' class='btn-secondary px-4 py-2 rounded text-notion-text'>Cancel</button>
+                    <button type='submit' class='btn-primary px-4 py-2 rounded text-white'>Update Roles</button>
+                </div>
+            </form>
+        `);
+
+        document.getElementById('manage-roles-form').onsubmit = async (e) => {
+            e.preventDefault();
+            await this.updateRoles(user, e.target);
+        };
+    }
+
+    /**
+     * Update user roles
+     * @param {string} user - Username
+     * @param {HTMLFormElement} form - Form element
+     */
+    async updateRoles(user, form) {
+        const selectedRoles = Array.from(form.querySelectorAll('input[name="role"]:checked'))
+            .map(cb => cb.value);
+
+        try {
+            const response = await fetch('/admin/update_user_roles', {
+                method: 'POST',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ user, roles: selectedRoles })
+            });
+
+            if (!response.ok) {
+                const data = await response.json().catch(() => ({}));
+                const err = data?.error || 'Error updating roles';
+                toastManager.show(err, 'error');
+                return;
+            }
+
+            const data = await response.json().catch(() => ({}));
+            if (data?.success) {
+                modalManager.close();
+                toastManager.show('Roles updated successfully', 'success');
+            } else {
+                toastManager.show('Error updating roles', 'error');
+            }
+        } catch (error) {
+            toastManager.show('Network error', 'error');
+        }
+    }
 }
 
 // Global user manager instance
