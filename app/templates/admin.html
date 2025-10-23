@@ -119,6 +119,7 @@
                                         </th>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">User</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Attributes</th>
+                                        <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Roles</th>
                                         <th class="px-4 py-3 text-left text-xs font-medium text-notion-text-secondary uppercase tracking-wider">Actions</th>
                                     </tr>
                                 </thead>
@@ -132,10 +133,13 @@
                                         {# Normalize different user value shapes: dict with 'attributes', list, or string #}
                                         {% if attrs is mapping %}
                                             {% set attr_list = attrs.get('attributes') if attrs.get('attributes') is not none else attrs %}
+                                            {% set role_list = attrs.get('roles', []) %}
                                         {% elif attrs is string %}
                                             {% set attr_list = [attrs] %}
+                                            {% set role_list = [] %}
                                         {% else %}
                                             {% set attr_list = attrs or [] %}
+                                            {% set role_list = [] %}
                                         {% endif %}
                                         <td class="px-4 py-3">
                                             <div class="flex flex-wrap gap-1">
@@ -145,15 +149,33 @@
                                             </div>
                                         </td>
                                         <td class="px-4 py-3">
+                                            <div class="flex flex-wrap gap-1">
+                                                {% for role in role_list %}
+                                                <span class="inline-flex px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400">{{ role }}</span>
+                                                {% endfor %}
+                                                {% if not role_list %}
+                                                <span class="text-notion-text-secondary text-xs italic">No roles</span>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                        <td class="px-4 py-3">
                                             <div class="flex flex-col sm:flex-row items-start space-y-1 sm:space-y-0 sm:space-x-2">
                                                 {# Build a safe attribute string for HTML attributes (escape single quotes) #}
                                                 {% set attr_str = attr_list|join(', ') %}
+                                                {% set role_str = role_list|join(', ') %}
                                                 <button type="button" class="btn-action btn-action-edit edit-user-link" 
                                                        data-user='{{ user|replace("'", "&#39;") }}' 
                                                        data-attrs='{{ attr_str|replace("'", "&#39;") }}' 
                                                        aria-label="Edit user {{ user }}"
                                                        title="Edit user">
                                                     <i data-lucide="edit-2" class="w-4 h-4"></i>
+                                                </button>
+                                                <button type="button" class="btn-action btn-action-info manage-roles-link" 
+                                                       data-user='{{ user|replace("'", "&#39;") }}' 
+                                                       data-roles='{{ role_str|replace("'", "&#39;") }}'
+                                                       aria-label="Manage roles for {{ user }}"
+                                                       title="Manage roles">
+                                                    <i data-lucide="shield" class="w-4 h-4"></i>
                                                 </button>
                                                 <button type="button" class="btn-action btn-action-delete delete-user-link" 
                                                        data-user='{{ user|replace("'", "&#39;") }}' 

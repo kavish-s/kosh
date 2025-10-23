@@ -58,6 +58,20 @@ def safe_load_json(file_path, default_value=None):
         return default_value
 
 
+def has_role(user_id, role):
+    """Check if a user has a specific role"""
+    try:
+        with open(USERS_FILE) as f:
+            users = json.load(f)
+        user_data = users.get(user_id)
+        if isinstance(user_data, dict):
+            roles = user_data.get("roles", [])
+            return role in roles or "admin" in roles
+        return False
+    except Exception:
+        return False
+
+
 def log_audit(user, action, details=None, ip=None):
     """Log audit events with proper error handling"""
     try:
@@ -291,12 +305,48 @@ def dashboard():
         if a and a not in all_attributes:
             all_attributes.add(a)
     all_attributes = sorted(list(all_attributes))
+    
+    # Check if user has role_manager permission
+    is_role_manager = has_role(user_id, "role_manager")
+    
+    # Load additional data for role managers
+    role_manager_data = {}
+    if is_role_manager:
+        try:
+            with open(USERS_FILE) as f:
+                role_manager_data['users'] = json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            role_manager_data['users'] = {}
+        
+        try:
+            with open(POLICIES_FILE) as f:
+                role_manager_data['policies'] = json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            role_manager_data['policies'] = {}
+        
+        # Load audit logs
+        audit_logs = []
+        try:
+            with open(AUDIT_LOG_FILE) as f:
+                for line in f:
+                    try:
+                        entry = json.loads(line)
+                        audit_logs.append(entry)
+                    except json.JSONDecodeError:
+                        continue
+        except (IOError, OSError):
+            audit_logs = []
+        role_manager_data['audit_logs'] = list(reversed(audit_logs))
+        role_manager_data['all_attributes'] = all_attributes
+    
     return render_template(
         "dashboard.html",
         user_id=user_id,
         files=user_files,
         server_ip=server_ip,
         all_attributes=all_attributes,
+        is_role_manager=is_role_manager,
+        role_manager_data=role_manager_data
     )
 
 
@@ -745,8 +795,8 @@ def admin_add_user():
         except Exception:
             users = {}
 
-        # Create user with default password 'pass' and the specified attributes
-        users[user_id] = {"attributes": attributes, "password": generate_password_hash("pass")}
+        # Create user with default password 'pass', attributes, and empty roles
+        users[user_id] = {"attributes": attributes, "password": generate_password_hash("pass"), "roles": []}
         try:
             with open(USERS_FILE, "w") as f:
                 json.dump(users, f, indent=2)
@@ -762,6 +812,7 @@ def admin_add_user():
                     {
                         "user": user_id,
                         "attributes": attributes,
+                        "roles": [],
                         "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     },
                     room="admin_updates",
@@ -775,6 +826,76 @@ def admin_add_user():
             return jsonify(success=True)
         return redirect(url_for("admin_dashboard"))
     return render_template("admin_add_user.html")
+
+
+@app.route("/admin/update_user_roles", methods=["POST"])
+def admin_update_user_roles():
+    """Update roles for a specific user (admin only)"""
+    if session.get("user_id") != "admin":
+        return jsonify(success=False, error="unauthorized"), 403
+    
+    data = request.get_json() or {}
+    target_user = data.get("user")
+    roles = data.get("roles", [])
+    
+    if not target_user:
+        return jsonify(success=False, error="user required"), 400
+    
+    if not isinstance(roles, list):
+        return jsonify(success=False, error="roles must be a list"), 400
+    
+    # Validate roles
+    valid_roles = ["role_manager"]
+    for role in roles:
+        if role not in valid_roles:
+            return jsonify(success=False, error=f"Invalid role: {role}"), 400
+    
+    try:
+        with open(USERS_FILE) as f:
+            users = json.load(f)
+    except Exception:
+        return jsonify(success=False, error="could not load users"), 500
+    
+    if target_user not in users:
+        return jsonify(success=False, error="user not found"), 404
+    
+    # Ensure user data is in dictionary format
+    if not isinstance(users[target_user], dict):
+        users[target_user] = {
+            "attributes": users[target_user] if isinstance(users[target_user], list) else [],
+            "password": generate_password_hash("pass"),
+            "roles": []
+        }
+    
+    old_roles = users[target_user].get("roles", [])
+    users[target_user]["roles"] = roles
+    
+    try:
+        with open(USERS_FILE, "w") as f:
+            json.dump(users, f, indent=2)
+        
+        log_audit(
+            session.get("user_id"),
+            "update_user_roles",
+            details=f"Updated roles for {target_user} from {old_roles} to {roles}",
+            ip=request.remote_addr,
+        )
+        
+        # Emit real-time update to admin dashboard
+        socketio.emit(
+            "user_roles_updated",
+            {
+                "user": target_user,
+                "roles": roles,
+                "old_roles": old_roles,
+                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            },
+            room="admin_updates",
+        )
+        
+        return jsonify(success=True)
+    except Exception as e:
+        return jsonify(success=False, error=f"could not save roles: {e}"), 500
 
 
 @app.route("/admin/edit_user/<user_id>", methods=["GET", "POST"])
