@@ -47,11 +47,11 @@ def cleanup_old_audit_logs():
     This function runs periodically to maintain compliance with data retention policies.
     """
     try:
-        if not os.path.exists(config.config.AUDIT_LOG_FILE):
+        if not os.path.exists(config.AUDIT_LOG_FILE):
             return
         
-        cutoff_date = datetime.now() - timedelta(days=config.config.AUDIT_LOG_RETENTION_DAYS)
-        temp_file = config.config.AUDIT_LOG_FILE + ".tmp"
+        cutoff_date = datetime.now() - timedelta(days=config.AUDIT_LOG_RETENTION_DAYS)
+        temp_file = config.AUDIT_LOG_FILE + ".tmp"
         deleted_count = 0
         kept_count = 0
         
@@ -72,15 +72,15 @@ def cleanup_old_audit_logs():
                     kept_count += 1
         
         # Replace original file with cleaned version
-        os.replace(temp_file, config.config.AUDIT_LOG_FILE)
+        os.replace(temp_file, config.AUDIT_LOG_FILE)
         
         if deleted_count > 0:
             print(f"[AUDIT CLEANUP] Deleted {deleted_count} old log entries, kept {kept_count} entries")
             # Log the cleanup action itself
-            utils.utils.log_audit(
+            utils.log_audit(
                 "system",
                 "audit_cleanup",
-                details=f"Deleted {deleted_count} audit entries older than {config.config.AUDIT_LOG_RETENTION_DAYS} days",
+                details=f"Deleted {deleted_count} audit entries older than {config.AUDIT_LOG_RETENTION_DAYS} days",
                 ip="127.0.0.1",
                 socketio=socketio
             )
@@ -106,6 +106,7 @@ def schedule_audit_cleanup():
 
 @app.route("/")
 def home():
+    """Render the home/login page. Redirect to dashboard if already logged in."""
     if "user_id" in session:
         return redirect(url_for("dashboard"))
     return render_template("index.html")
@@ -113,6 +114,17 @@ def home():
 
 @app.route("/login", methods=["POST"])
 def login():
+    """
+    Authenticate user and create session.
+    
+    POST data:
+        user_id: Username
+        password: User password
+    
+    Returns:
+        Redirect to admin dashboard for admin user, regular dashboard for others
+        Error message with 401/400 status on failure
+    """
     user_id = request.form.get("user_id")
     password = request.form.get("password")
 
@@ -160,6 +172,15 @@ def login():
 
 @app.route("/dashboard")
 def dashboard():
+    """
+    Render user dashboard with accessible files and permissions.
+    
+    Shows:
+        - Files accessible to user based on attributes
+        - Attribute management interface
+        - Role manager interface (if user has role_manager permission)
+        - Upload and file management tools
+    """
     user_id = session.get("user_id")
     if not user_id:
         return redirect(url_for("home"))
@@ -178,36 +199,7 @@ def dashboard():
         server_ip = "localhost"
 
     # Load all attributes for attribute selection UI
-    config.ATTRIBUTES_FILE = os.path.join(config.DATA_DIR, "attributes.json")
-    user_attrs = set()
-    # Load user attributes from config.USERS_FILE
-    if os.path.exists(config.USERS_FILE):
-        with open(config.USERS_FILE) as f:
-            users = json.load(f)
-        for u, v in (users or {}).items():
-            if isinstance(v, dict):
-                attrs = v.get("attributes") or []
-            elif isinstance(v, list):
-                attrs = v
-            else:
-                attrs = []
-            for a in attrs:
-                if isinstance(a, str) and "," in a:
-                    for part in a.split(","):
-                        user_attrs.add(part.strip())
-                else:
-                    user_attrs.add(a)
-    # Load attributes.json
-    if os.path.exists(config.ATTRIBUTES_FILE):
-        with open(config.ATTRIBUTES_FILE) as f:
-            all_attributes = set(json.load(f))
-    else:
-        all_attributes = set()
-    # Merge user attributes into global list
-    for a in user_attrs:
-        if a and a not in all_attributes:
-            all_attributes.add(a)
-    all_attributes = sorted(list(all_attributes))
+    all_attributes = utils.load_all_attributes()
     
     # Check if user has role_manager permission
     is_role_manager = utils.has_role(user_id, "role_manager")
@@ -253,9 +245,14 @@ def dashboard():
     )
 
 
-# API endpoint to get updated file list
 @app.route("/api/files")
 def api_files():
+    """
+    API endpoint to get updated file list for current user.
+    
+    Returns:
+        JSON with list of files accessible to the user
+    """
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"error": "Not authenticated"}), 401
@@ -265,9 +262,17 @@ def api_files():
     return jsonify({"files": user_files})
 
 
-# Route for changing password
 @app.route("/change_password", methods=["POST"])
 def change_password():
+    """
+    Allow user to change their password.
+    
+    POST data:
+        new_password: New password (minimum 6 characters)
+    
+    Returns:
+        Redirect to dashboard with flash message
+    """
     user_id = session.get("user_id")
     if not user_id:
         return redirect(url_for("home"))
@@ -293,7 +298,11 @@ def change_password():
         return redirect(url_for("dashboard"))
 
     if user_id in users:
-        users[user_id]["password"] = generate_password_hash(new_password)
+        # Update password for existing user
+        user_data = utils.normalize_user_data(users[user_id])
+        user_data["password"] = generate_password_hash(new_password)
+        users[user_id] = user_data
+        
         try:
             with open(config.USERS_FILE, "w") as f:
                 json.dump(users, f, indent=2)
@@ -315,6 +324,21 @@ def change_password():
 
 @app.route("/upload", methods=["POST"])
 def upload():
+    """
+    Handle file upload with encryption and policy assignment.
+    
+    POST data:
+        file: One or more files to upload
+        policy: Attribute-based access policy (comma-separated attributes)
+    
+    Security:
+        - Files are encrypted with AES-CTR and HMAC-SHA256
+        - File type and size validation
+        - Secure filename handling
+    
+    Returns:
+        JSON with success status and uploaded filenames
+    """
     if "user_id" not in session:
         return jsonify(success=False, error="Not authenticated"), 401
 
@@ -427,31 +451,45 @@ def upload():
     
     # Emit file updates to admin dashboard
     for filename in uploaded_files:
-        # Get file stats for admin view
-        file_path = os.path.join(config.UPLOAD_FOLDER, filename)
         file_stats = {
             'name': filename,
             'owner': session['user_id'],
-            'upload_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            'upload_date': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'size': 'Unknown'
         }
         try:
+            file_path = os.path.join(config.UPLOAD_FOLDER, filename)
             if os.path.exists(file_path):
                 file_stats['size'] = f"{os.path.getsize(file_path)} bytes"
-            else:
-                file_stats['size'] = "Unknown"
         except:
-            file_stats['size'] = "Unknown"
+            pass
             
-        socketio.emit('file_uploaded', {
-            'file': file_stats,
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        }, room='admin_updates')
+        utils.emit_socketio_event(
+            socketio,
+            'file_uploaded',
+            {'file': file_stats},
+        )
 
     return jsonify(success=True, filenames=uploaded_files)
 
 
 @app.route("/download/<filename>")
 def download(filename):
+    """
+    Download and decrypt a file if user has access.
+    
+    Args:
+        filename: Name of the encrypted file
+    
+    Security:
+        - Prevents directory traversal attacks
+        - Validates user access based on attributes or ownership
+        - Verifies HMAC before decryption
+        - Logs all download attempts
+    
+    Returns:
+        Decrypted file or error response
+    """
     import traceback
     print(f"[DOWNLOAD] User session: {session.get('user_id')}, filename: {filename}")
     if 'user_id' not in session:
@@ -536,6 +574,7 @@ def download(filename):
 
 @app.route("/logout")
 def logout():
+    """Clear session and redirect to home page."""
     user_id = session.get("user_id")
     if user_id:
         utils.log_audit(user_id, "logout", details="User logged out", ip=request.remote_addr)
@@ -545,7 +584,16 @@ def logout():
 
 @app.route("/admin")
 def admin_dashboard():
-    """Admin dashboard — only accessible to admin user"""
+    """
+    Admin dashboard with full system overview.
+    
+    Admin-only features:
+        - View and manage all users
+        - View and manage all policies
+        - View all files regardless of access policy
+        - View and download audit logs
+        - Manage global attributes
+    """
     if session.get("user_id") != "admin":
         return redirect(url_for("home"))
 
@@ -602,40 +650,11 @@ def admin_dashboard():
         audit_logs = []
     audit_logs = list(reversed(audit_logs))  # latest first
 
-    # Load global attribute list from attributes.json
-    config.ATTRIBUTES_FILE = os.path.join(config.DATA_DIR, "attributes.json")
-    user_attrs = set()
-    for u, v in (users or {}).items():
-        if isinstance(v, dict):
-            attrs = v.get("attributes") or []
-        elif isinstance(v, list):
-            attrs = v
-        else:
-            attrs = []
-        for a in attrs:
-            # Split comma-separated attributes if present
-            if isinstance(a, str) and "," in a:
-                for part in a.split(","):
-                    user_attrs.add(part.strip())
-            else:
-                user_attrs.add(a)
-    # Load attributes.json
-    if os.path.exists(config.ATTRIBUTES_FILE):
-        with open(config.ATTRIBUTES_FILE) as f:
-            all_attributes = set(json.load(f))
-    else:
-        all_attributes = set()
-    # Merge user attributes into global list
-    updated = False
-    for a in user_attrs:
-        if a and a not in all_attributes:
-            all_attributes.add(a)
-            updated = True
-    all_attributes = sorted(list(all_attributes))
-    # Save if updated
-    if updated:
-        with open(config.ATTRIBUTES_FILE, "w") as f:
-            json.dump(all_attributes, f, indent=2)
+    # Load global attribute list
+    all_attributes = utils.load_all_attributes()
+    
+    # Save updated attributes if needed
+    utils.save_all_attributes(all_attributes)
 
     return render_template(
         "admin.html",
@@ -647,9 +666,18 @@ def admin_dashboard():
     )
 
 
-# --- Admin User Management Routes ---
 @app.route("/admin/add_user", methods=["GET", "POST"])
 def admin_add_user():
+    """
+    Add a new user with attributes (admin only).
+    
+    POST data (JSON):
+        user or user_id: Username
+        attrs or attributes: Comma-separated attribute list
+    
+    Returns:
+        JSON response with success status
+    """
     if session.get("user_id") != "admin":
         return redirect(url_for("home"))
     if request.method == "POST":
@@ -689,9 +717,7 @@ def admin_add_user():
 
         attributes, err = utils.parse_and_validate_attrs(raw)
         if err:
-            if is_ajax:
-                return jsonify(success=False, error=err), 400
-            return err, 400
+            return jsonify(success=False, error=err), 400
 
         try:
             with open(config.USERS_FILE) as f:
@@ -699,8 +725,12 @@ def admin_add_user():
         except Exception:
             users = {}
 
-        # Create user with default password 'pass', attributes, and empty roles
-        users[user_id] = {"attributes": attributes, "password": generate_password_hash("pass"), "roles": []}
+        # Create user with attributes, default password, and empty roles
+        users[user_id] = {
+            "attributes": attributes, 
+            "password": generate_password_hash("pass"), 
+            "roles": []
+        }
         try:
             with open(config.USERS_FILE, "w") as f:
                 json.dump(users, f, indent=2)
@@ -711,30 +741,36 @@ def admin_add_user():
                     ip=request.remote_addr,
                 )
                 # Emit real-time update to admin dashboard
-                socketio.emit(
+                utils.emit_socketio_event(
+                    socketio,
                     "user_added",
                     {
                         "user": user_id,
                         "attributes": attributes,
                         "roles": [],
-                        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                     },
-                    room="admin_updates",
                 )
         except Exception as e:
-            if is_ajax:
-                return jsonify(success=False, error=f"could not save user: {e}"), 500
-            return "Could not save user", 500
+            return jsonify(success=False, error=f"could not save user: {e}"), 500
 
-        if is_ajax:
-            return jsonify(success=True)
-        return redirect(url_for("admin_dashboard"))
-    return render_template("admin_add_user.html")
+        return jsonify(success=True)
 
 
 @app.route("/admin/update_user_roles", methods=["POST"])
 def admin_update_user_roles():
-    """Update roles for a specific user (admin only)"""
+    """
+    Update roles for a specific user (admin only).
+    
+    POST data (JSON):
+        user: Username
+        roles: List of role names
+    
+    Available roles:
+        - role_manager: Can manage user attributes
+    
+    Returns:
+        JSON response with success status
+    """
     if session.get("user_id") != "admin":
         return jsonify(success=False, error="unauthorized"), 403
     
@@ -763,16 +799,11 @@ def admin_update_user_roles():
     if target_user not in users:
         return jsonify(success=False, error="user not found"), 404
     
-    # Ensure user data is in dictionary format
-    if not isinstance(users[target_user], dict):
-        users[target_user] = {
-            "attributes": users[target_user] if isinstance(users[target_user], list) else [],
-            "password": generate_password_hash("pass"),
-            "roles": []
-        }
-    
-    old_roles = users[target_user].get("roles", [])
-    users[target_user]["roles"] = roles
+    # Normalize user data to dict format
+    user_data = utils.normalize_user_data(users[target_user])
+    old_roles = user_data.get("roles", [])
+    user_data["roles"] = roles
+    users[target_user] = user_data
     
     try:
         with open(config.USERS_FILE, "w") as f:
@@ -786,15 +817,14 @@ def admin_update_user_roles():
         )
         
         # Emit real-time update to admin dashboard
-        socketio.emit(
+        utils.emit_socketio_event(
+            socketio,
             "user_roles_updated",
             {
                 "user": target_user,
                 "roles": roles,
                 "old_roles": old_roles,
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             },
-            room="admin_updates",
         )
         
         return jsonify(success=True)
@@ -816,7 +846,6 @@ def admin_edit_user(user_id):
             or "application/json" in request.headers.get("Accept", "")
         )
 
-        attributes = []
         if request.is_json:
             data = request.get_json() or {}
             raw = data.get("attributes") or data.get("attrs") or ""
@@ -827,16 +856,11 @@ def admin_edit_user(user_id):
         if err:
             return jsonify(success=False, error=err), 400
 
-        old_attrs = users.get(user_id, [])
-
-        # Preserve the dictionary structure with password
-        if isinstance(users.get(user_id), dict):
-            # User exists as dictionary, update attributes but keep password
-            existing_password = users[user_id].get("password", "pass")
-            users[user_id] = {"attributes": attributes, "password": existing_password}
-        else:
-            # User exists as array (legacy format), convert to new format with default password
-            users[user_id] = {"attributes": attributes, "password": generate_password_hash("pass")}
+        # Normalize user data and preserve password
+        user_data = utils.normalize_user_data(users.get(user_id))
+        old_attrs = user_data.get("attributes", [])
+        user_data["attributes"] = attributes
+        users[user_id] = user_data
 
         try:
             with open(config.USERS_FILE, "w") as f:
@@ -848,15 +872,14 @@ def admin_edit_user(user_id):
                 ip=request.remote_addr,
             )
             # Emit real-time update to admin dashboard
-            socketio.emit(
+            utils.emit_socketio_event(
+                socketio,
                 "user_updated",
                 {
                     "user": user_id,
                     "attributes": attributes,
                     "old_attributes": old_attrs,
-                    "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 },
-                room="admin_updates",
             )
         except Exception:
             if is_ajax:
@@ -867,13 +890,9 @@ def admin_edit_user(user_id):
             return jsonify(success=True)
         return redirect(url_for("admin_dashboard"))
 
-    # Get user attributes, handling both dictionary and array formats
-    user_data = users.get(user_id, [])
-    if isinstance(user_data, dict):
-        attrs = user_data.get("attributes", [])
-    else:
-        attrs = user_data
-    attrs = ",".join(attrs)
+    # Get user attributes for display
+    user_data = utils.normalize_user_data(users.get(user_id, {}))
+    attrs = ",".join(user_data.get("attributes", []))
 
     return render_template("admin_edit_user.html", user_id=user_id, attributes=attrs)
 
@@ -917,11 +936,11 @@ def admin_add_policy():
             ip=request.remote_addr,
         )
         # Emit real-time update to admin dashboard
-        socketio.emit('policy_added', {
-            'file': file,
-            'policy': {"policy": policy, "key": None},
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        }, room='admin_updates')
+        utils.emit_socketio_event(
+            socketio,
+            'policy_added',
+            {'file': file, 'policy': {"policy": policy, "key": None}},
+        )
         return redirect(url_for('admin_dashboard'))
     else:
         return render_template("admin_add_policy.html")
@@ -958,12 +977,15 @@ def admin_edit_policy(file):
                 ip=request.remote_addr,
             )
             # Emit real-time update to admin dashboard
-            socketio.emit('policy_updated', {
-                'file': file,
-                'policy': {"policy": policy, "key": None},
-                'old_policy': old_policy,
-                'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            }, room='admin_updates')
+            utils.emit_socketio_event(
+                socketio,
+                'policy_updated',
+                {
+                    'file': file,
+                    'policy': {"policy": policy, "key": None},
+                    'old_policy': old_policy,
+                },
+            )
         except Exception:
             if is_ajax:
                 return jsonify(success=False, error="Could not save policy"), 500
@@ -973,7 +995,6 @@ def admin_edit_policy(file):
             return jsonify(success=True)
         return redirect(url_for("admin_dashboard"))
     policy_val = policies.get(file, {}).get("policy", "")
-    return render_template("admin_edit_policy.html", file=file, policy=policy_val)
     return render_template("admin_edit_policy.html", file=file, policy=policy_val)
 
 
@@ -989,10 +1010,11 @@ def admin_delete_policy(file):
     utils.log_audit(session.get('user_id'), 'delete_policy', details=f'Deleted policy for file {file}', ip=request.remote_addr)
     
     # Emit real-time update to admin dashboard
-    socketio.emit('policy_deleted', {
-        'file': file,
-        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    }, room='admin_updates')
+    utils.emit_socketio_event(
+        socketio,
+        'policy_deleted',
+        {'file': file},
+    )
     
     return redirect(url_for('admin_dashboard'))
 
@@ -1025,10 +1047,10 @@ def admin_delete_user_ajax():
             ip=request.remote_addr,
         )
         # Emit real-time update to admin dashboard
-        socketio.emit(
+        utils.emit_socketio_event(
+            socketio,
             "user_deleted",
-            {"user": user, "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S")},
-            room="admin_updates",
+            {"user": user},
         )
     except Exception as e:
         return jsonify(success=False, error=f"could not update users: {e}"), 500
@@ -1060,13 +1082,10 @@ def admin_delete_policy_ajax():
         )
 
         # Emit real-time update to admin dashboard
-        socketio.emit(
+        utils.emit_socketio_event(
+            socketio,
             "policy_deleted",
-            {
-                "file": filename,
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            },
-            room="admin_updates",
+            {"file": filename},
         )
 
         # Broadcast policy deletion - this affects file visibility
@@ -1081,15 +1100,16 @@ def admin_delete_policy_ajax():
     return jsonify(success=True)
 
 
-# AJAX endpoint: delete an uploaded file and its policy (for users to delete their own files)
 @app.route("/delete_file", methods=["POST"])
 def delete_file():
+    """Delete a file (user can only delete their own files, admin can delete any)."""
     if "user_id" not in session:
         return jsonify(success=False, error="unauthorized"), 403
 
     user_id = session["user_id"]
     data = request.get_json() or {}
     filename = data.get("filename")
+    
     if not filename:
         return jsonify(success=False, error="filename required"), 400
 
@@ -1108,105 +1128,37 @@ def delete_file():
 
     # Allow deletion if user is the owner or admin
     if user_id != "admin" and file_owner != user_id:
-        return (
-            jsonify(
-                success=False, error="unauthorized - you can only delete your own files"
-            ),
-            403,
-        )
+        return jsonify(success=False, error="unauthorized - you can only delete your own files"), 403
 
-    # Remove file from uploads
-    file_path = os.path.join(config.UPLOAD_FOLDER, filename)
-    try:
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        utils.log_audit(
-            user_id,
-            "delete_file",
-            details=f"Deleted file {filename}",
-            ip=request.remote_addr,
-        )
-    except Exception as e:
-        return jsonify(success=False, error=f"could not remove file: {e}"), 500
-
-    # Remove policy entry if present
-    if filename in policies:
-        policies.pop(filename, None)
-        try:
-            with open(config.POLICIES_FILE, "w") as f:
-                json.dump(policies, f, indent=2)
-        except Exception as e:
-            return jsonify(success=False, error=f"could not update policies: {e}"), 500
-
-    # Broadcast file deletion to all connected dashboard users
-    socketio.emit('file_deleted', {
-        'deleter': user_id,
-        'filename': filename
-    }, room='dashboard_updates')
+    # Use helper function to delete file and policy
+    success, error = utils.delete_file_and_policy(filename, user_id, request.remote_addr, socketio)
     
-    # Emit file deletion to admin dashboard
-    socketio.emit('file_deleted', {
-        'filename': filename,
-        'deleter': user_id,
-        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    }, room='admin_updates')
-
-    return jsonify(success=True)
+    if success:
+        return jsonify(success=True)
+    else:
+        return jsonify(success=False, error=error), 500
 
 
-# AJAX endpoint: delete an uploaded file and its policy (admin only)
 @app.route("/admin/delete_file", methods=["POST"])
 def admin_delete_file():
+    """Delete a file (admin only)."""
     if session.get("user_id") != "admin":
         return jsonify(success=False, error="unauthorized"), 403
+    
     data = request.get_json() or {}
     filename = data.get("filename")
+    
     if not filename:
         return jsonify(success=False, error="filename required"), 400
 
-    # Remove file from uploads
-    file_path = os.path.join(config.UPLOAD_FOLDER, filename)
-    try:
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        utils.log_audit(
-            session.get("user_id"),
-            "delete_file",
-            details=f"Deleted file {filename}",
-            ip=request.remote_addr,
-        )
-    except Exception as e:
-        return jsonify(success=False, error=f"could not remove file: {e}"), 500
-
-    # Remove policy entry if present
-    try:
-        with open(config.POLICIES_FILE) as f:
-            policies = json.load(f)
-    except Exception:
-        policies = {}
-
-    if filename in policies:
-        policies.pop(filename, None)
-        try:
-            with open(config.POLICIES_FILE, "w") as f:
-                json.dump(policies, f, indent=2)
-        except Exception as e:
-            return jsonify(success=False, error=f"could not update policies: {e}"), 500
-
-    # Broadcast file deletion to all connected dashboard users
-    socketio.emit('file_deleted', {
-        'deleter': session.get('user_id'),
-        'filename': filename
-    }, room='dashboard_updates')
+    # Use helper function to delete file and policy
+    success, error = utils.delete_file_and_policy(filename, session.get("user_id"), request.remote_addr, socketio)
     
-    # Emit file deletion to admin dashboard
-    socketio.emit('file_deleted', {
-        'filename': filename,
-        'deleter': session.get('user_id'),
-        'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    }, room='admin_updates')
+    if success:
+        return jsonify(success=True)
+    else:
+        return jsonify(success=False, error=error), 500
 
-    return jsonify(success=True)
 
 
 # AJAX endpoint: bulk delete users (expects JSON { users: [..] })
@@ -1242,13 +1194,10 @@ def admin_bulk_delete_users():
             )
 
         # Emit real-time update to admin dashboard
-        socketio.emit(
+        utils.emit_socketio_event(
+            socketio,
             "users_bulk_deleted",
-            {
-                "users": users_to_delete,
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            },
-            room="admin_updates",
+            {"users": users_to_delete},
         )
 
     except Exception as e:
@@ -1290,13 +1239,10 @@ def admin_bulk_delete_policies():
             )
 
         # Emit real-time update to admin dashboard
-        socketio.emit(
+        utils.emit_socketio_event(
+            socketio,
             "policies_bulk_deleted",
-            {
-                "files": files_to_delete,
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            },
-            room="admin_updates",
+            {"files": files_to_delete},
         )
 
     except Exception as e:
@@ -1342,14 +1288,13 @@ def admin_bulk_set_attrs():
             json.dump(users, f, indent=2)
 
         # Emit real-time update to admin dashboard
-        socketio.emit(
+        utils.emit_socketio_event(
+            socketio,
             "users_bulk_attrs_updated",
             {
                 "users": users_to_update,
                 "attributes": attrs_list,
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             },
-            room="admin_updates",
         )
 
     except Exception as e:
@@ -1361,6 +1306,7 @@ def admin_bulk_set_attrs():
 # WebSocket event handlers
 @socketio.on("connect")
 def handle_connect():
+    """Handle WebSocket connection - join user-specific room."""
     user_id = session.get("user_id")
     if user_id:
         join_room(f"user_{user_id}")
@@ -1369,6 +1315,7 @@ def handle_connect():
 
 @socketio.on("disconnect")
 def handle_disconnect():
+    """Handle WebSocket disconnection - leave user-specific room."""
     user_id = session.get("user_id")
     if user_id:
         leave_room(f"user_{user_id}")
@@ -1376,6 +1323,7 @@ def handle_disconnect():
 
 @socketio.on("join_dashboard")
 def handle_join_dashboard():
+    """Join dashboard updates room for real-time file notifications."""
     user_id = session.get("user_id")
     if user_id:
         join_room("dashboard_updates")
@@ -1384,6 +1332,7 @@ def handle_join_dashboard():
 
 @socketio.on("leave_dashboard")
 def handle_leave_dashboard():
+    """Leave dashboard updates room."""
     user_id = session.get("user_id")
     if user_id:
         leave_room("dashboard_updates")
@@ -1391,6 +1340,7 @@ def handle_leave_dashboard():
 
 @socketio.on("join_admin")
 def handle_join_admin():
+    """Join admin updates room for real-time admin notifications (admin only)."""
     user_id = session.get("user_id")
     if user_id == "admin":
         join_room("admin_updates")
@@ -1399,6 +1349,7 @@ def handle_join_admin():
 
 @socketio.on("leave_admin")
 def handle_leave_admin():
+    """Leave admin updates room."""
     user_id = session.get("user_id")
     if user_id == "admin":
         leave_room("admin_updates")
