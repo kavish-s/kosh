@@ -1489,10 +1489,12 @@ def download_audit_logs():
         return jsonify(success=False, error="Failed to download audit logs"), 500
 
 
+
 if __name__ == "__main__":
     # Start the audit log cleanup thread
     cleanup_thread = threading.Thread(target=schedule_audit_cleanup, daemon=True)
     cleanup_thread.start()
     print(f"[AUDIT CLEANUP] Started background cleanup task (retention: {config.AUDIT_LOG_RETENTION_DAYS} days)")
-    
-    socketio.run(app, debug=True, port=7130, host="0.0.0.0")
+    import eventlet
+    import eventlet.wsgi
+    socketio.run(app, debug=False, port=7130, host="0.0.0.0")
