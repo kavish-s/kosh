@@ -1,4 +1,5 @@
 Flask==3.1.2
 flask-socketio==5.5.1
 flask-cors==6.0.1
-cryptography==46.0.3
+cryptography==45.0.7
+werkzeug==3.1.3
