@@ -266,3 +266,178 @@ def get_user_files(user_id, policies, abe_module):
                 })
 
     return user_files
+
+
+def normalize_user_data(user_data):
+    """
+    Convert legacy user format (list of attributes) to new format (dict with attributes and password).
+    
+    Args:
+        user_data: User data in any format (dict, list, or other)
+    
+    Returns:
+        dict: Normalized user data with 'attributes', 'password', and 'roles' fields
+    """
+    from werkzeug.security import generate_password_hash
+    
+    if isinstance(user_data, dict):
+        # Already in new format, ensure all fields exist
+        return {
+            'attributes': user_data.get('attributes', []),
+            'password': user_data.get('password', generate_password_hash('pass')),
+            'roles': user_data.get('roles', [])
+        }
+    elif isinstance(user_data, list):
+        # Legacy format: list of attributes
+        return {
+            'attributes': user_data,
+            'password': generate_password_hash('pass'),
+            'roles': []
+        }
+    else:
+        # Unknown format: return default
+        return {
+            'attributes': [],
+            'password': generate_password_hash('pass'),
+            'roles': []
+        }
+
+
+def get_user_attributes(user_data):
+    """
+    Extract attributes from user data in any format.
+    
+    Args:
+        user_data: User data in any format (dict, list, or other)
+    
+    Returns:
+        list: List of attribute strings
+    """
+    if isinstance(user_data, dict):
+        return user_data.get('attributes', [])
+    elif isinstance(user_data, list):
+        return user_data
+    else:
+        return []
+
+
+def load_all_attributes():
+    """
+    Load and merge attributes from both users.json and attributes.json.
+    
+    Returns:
+        list: Sorted list of all unique attributes
+    """
+    user_attrs = set()
+    
+    # Load attributes from users
+    if os.path.exists(config.USERS_FILE):
+        with open(config.USERS_FILE) as f:
+            users = json.load(f)
+        for user_id, user_data in users.items():
+            attrs = get_user_attributes(user_data)
+            for attr in attrs:
+                # Split comma-separated attributes if present
+                if isinstance(attr, str) and "," in attr:
+                    for part in attr.split(","):
+                        user_attrs.add(part.strip())
+                elif attr:
+                    user_attrs.add(attr)
+    
+    # Load attributes from attributes.json
+    if os.path.exists(config.ATTRIBUTES_FILE):
+        with open(config.ATTRIBUTES_FILE) as f:
+            global_attrs = json.load(f)
+            user_attrs.update(global_attrs)
+    
+    return sorted(list(user_attrs))
+
+
+def save_all_attributes(attributes):
+    """
+    Save attributes to attributes.json file.
+    
+    Args:
+        attributes: List of attribute strings to save
+    """
+    with open(config.ATTRIBUTES_FILE, 'w') as f:
+        json.dump(attributes, f, indent=2)
+
+
+def emit_socketio_event(socketio, event_name, data, room='admin_updates'):
+    """
+    Safely emit a SocketIO event with timestamp.
+    
+    Args:
+        socketio: SocketIO instance
+        event_name: Name of the event to emit
+        data: Data dictionary to send
+        room: Room to broadcast to (default: 'admin_updates')
+    """
+    if socketio:
+        if 'timestamp' not in data:
+            data['timestamp'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        socketio.emit(event_name, data, room=room)
+
+
+def delete_file_and_policy(filename, user_id, ip_address, socketio=None):
+    """
+    Delete a file and its associated policy.
+    
+    Args:
+        filename: Name of the file to delete
+        user_id: ID of the user performing the deletion
+        ip_address: IP address of the requester
+        socketio: SocketIO instance for real-time updates (optional)
+    
+    Returns:
+        tuple: (success, error_message) - error_message is None if successful
+    """
+    # Remove file from uploads
+    file_path = os.path.join(config.UPLOAD_FOLDER, filename)
+    try:
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        log_audit(
+            user_id,
+            "delete_file",
+            details=f"Deleted file {filename}",
+            ip=ip_address,
+        )
+    except Exception as e:
+        return False, f"could not remove file: {e}"
+
+    # Remove policy entry if present
+    try:
+        with open(config.POLICIES_FILE) as f:
+            policies = json.load(f)
+    except Exception:
+        policies = {}
+
+    if filename in policies:
+        policies.pop(filename, None)
+        try:
+            with open(config.POLICIES_FILE, "w") as f:
+                json.dump(policies, f, indent=2)
+        except Exception as e:
+            return False, f"could not update policies: {e}"
+
+    # Broadcast file deletion to all connected users
+    if socketio:
+        socketio.emit('file_deleted', {
+            'deleter': user_id,
+            'filename': filename
+        }, room='dashboard_updates')
+        
+        # Emit to admin dashboard
+        emit_socketio_event(
+            socketio,
+            'file_deleted',
+            {
+                'filename': filename,
+                'deleter': user_id,
+            },
+        )
+
+    return True, None
+
