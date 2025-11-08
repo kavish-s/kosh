@@ -8,7 +8,9 @@
       "year4"
     ],
     "password": "scrypt:32768:8:1$S5DOffkNjHLCG16z$75486340415f06271fe5811928599accc61b49c9f6644c8643fd539f3550bb0e3caf4e5c6528c7545a11b8af551858e1abb49bf72d085b079204070ed7db9c93",
-    "roles": []
+    "roles": [
+      "role_manager"
+    ]
   },
   "atharva": {
     "attributes": [

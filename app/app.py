@@ -1448,4 +1448,5 @@ if __name__ == "__main__":
     print(f"[AUDIT CLEANUP] Started background cleanup task (retention: {config.AUDIT_LOG_RETENTION_DAYS} days)")
     import eventlet
     import eventlet.wsgi
-    socketio.run(app, debug=False, port=7130, host="0.0.0.0")
+    print(f"[SERVER] Starting server on {config.HOST}:{config.PORT}")
+    socketio.run(app, debug=config.DEBUG, port=config.PORT, host=config.HOST)
