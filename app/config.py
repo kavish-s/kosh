@@ -23,7 +23,7 @@ HMAC_KEY_PATH = os.path.join(DATA_DIR, "aes_hmac.key")
 # Application settings
 SECRET_KEY = os.environ.get("KOSH_SECRET_KEY", "kosh-secret-key-change-in-production")
 DEBUG = os.environ.get("KOSH_DEBUG", "True").lower() == "true"
-HOST = os.environ.get("KOSH_HOST", "10.125.161.57")
+HOST = os.environ.get("KOSH_HOST", "127.0.0.1")
 PORT = int(os.environ.get("KOSH_PORT", "7130"))
 
 # Security settings
